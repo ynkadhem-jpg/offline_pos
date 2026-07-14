@@ -5,11 +5,16 @@ import 'database.dart';
 /// Derived report totals that are calculated on demand and never persisted.
 class ReportSummary {
   const ReportSummary({
+    required this.totalCollected,
     required this.totalProfit,
     required this.totalSales,
     required this.remainingBalance,
   });
 
+  /// All amounts actually collected for active sales, including overpayments.
+  final double totalCollected;
+
+  /// The collected interest portion after capping each installment at its due.
   final double totalProfit;
   final int totalSales;
   final double remainingBalance;
@@ -51,6 +56,7 @@ class ReportsDao extends DatabaseAccessor<AppDatabase> {
 
     return query.watchSingle().map(
       (row) => ReportSummary(
+        totalCollected: row.read<double>('total_collected'),
         totalProfit: row.read<double>('total_profit'),
         totalSales: row.read<int>('total_sales'),
         remainingBalance: row.read<double>('remaining_balance'),
@@ -106,6 +112,16 @@ SELECT
     ),
     0.0
   ) AS remaining_balance,
+  COALESCE(
+    (
+      SELECT SUM(installment.total_paid)
+      FROM installments AS installment
+      INNER JOIN sales AS collected_sale
+        ON collected_sale.id = installment.sale_id
+      WHERE collected_sale.is_deleted = 0
+    ),
+    0.0
+  ) AS total_collected,
   COALESCE(
     (
       SELECT SUM(

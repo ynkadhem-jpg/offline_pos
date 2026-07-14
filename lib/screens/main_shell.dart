@@ -1,11 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../design_system/tokens/app_spacing.dart';
+import '../services/automatic_backup_service.dart';
+import '../services/automatic_backup_storage.dart';
 import '../services/database.dart';
+import '../services/local_backup_service.dart';
 import 'accounts.dart';
 import 'customers.dart';
 import 'dashboard.dart';
 import 'products.dart';
+import 'settings.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -15,14 +21,57 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _selectedIndex = 0;
-  late final AppDatabase _database = AppDatabase();
+  AppDatabase _database = AppDatabase();
+  final LocalBackupService _backupService = LocalBackupService();
+  late final AutomaticBackupService _automaticBackupService;
+  int _databaseGeneration = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _automaticBackupService = AutomaticBackupService(
+      localBackupService: _backupService,
+      storage: const AndroidAutomaticBackupStorage(),
+      timestampStore: SharedPreferencesAutomaticBackupTimestampStore(),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        unawaited(_automaticBackupService.runIfDue(_database));
+      }
+    });
+  }
 
   List<Widget> get _screens => [
-    DashboardScreen(database: _database),
-    CustomersScreen(database: _database),
-    ProductsScreen(database: _database),
-    AccountsScreen(database: _database),
+    DashboardScreen(
+      key: ValueKey('dashboard_$_databaseGeneration'),
+      database: _database,
+    ),
+    CustomersScreen(
+      key: ValueKey('customers_$_databaseGeneration'),
+      database: _database,
+    ),
+    ProductsScreen(
+      key: ValueKey('products_$_databaseGeneration'),
+      database: _database,
+    ),
+    AccountsScreen(
+      key: ValueKey('accounts_$_databaseGeneration'),
+      database: _database,
+    ),
+    SettingsScreen(
+      key: ValueKey('settings_$_databaseGeneration'),
+      database: _database,
+      backupService: _backupService,
+      onDatabaseChanged: _replaceDatabase,
+    ),
   ];
+
+  void _replaceDatabase(AppDatabase database) {
+    setState(() {
+      _database = database;
+      _databaseGeneration++;
+    });
+  }
 
   @override
   void dispose() {
@@ -35,10 +84,7 @@ class _MainShellState extends State<MainShell> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final useRail = constraints.maxWidth >= 800;
-        final content = IndexedStack(
-          index: _selectedIndex,
-          children: _screens,
-        );
+        final content = IndexedStack(index: _selectedIndex, children: _screens);
         return Scaffold(
           body: useRail
               ? Row(
@@ -82,6 +128,11 @@ class _MainShellState extends State<MainShell> {
                           selectedIcon: Icon(Icons.bar_chart),
                           label: Text('التقارير'),
                         ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.settings_outlined),
+                          selectedIcon: Icon(Icons.settings),
+                          label: Text('الإعدادات'),
+                        ),
                       ],
                     ),
                     const VerticalDivider(width: 1),
@@ -115,6 +166,11 @@ class _MainShellState extends State<MainShell> {
                       icon: Icon(Icons.bar_chart_outlined),
                       selectedIcon: Icon(Icons.bar_chart),
                       label: 'التقارير',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.settings_outlined),
+                      selectedIcon: Icon(Icons.settings),
+                      label: 'الإعدادات',
                     ),
                   ],
                 ),

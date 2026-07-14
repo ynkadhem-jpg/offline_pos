@@ -109,6 +109,7 @@ void main() {
     final products = await reportsDao.watchTopSellingProducts().first;
 
     expect(summary.totalProfit, 0);
+    expect(summary.totalCollected, 0);
     expect(summary.totalSales, 0);
     expect(summary.remainingBalance, 0);
     expect(products, isEmpty);
@@ -135,6 +136,7 @@ void main() {
     final summary = await reportsDao.watchSummary().first;
 
     expect(summary.remainingBalance, closeTo(60, 1e-10));
+    expect(summary.totalCollected, closeTo(40, 1e-10));
     expect(summary.totalProfit, closeTo(8, 1e-10));
   });
 
@@ -151,6 +153,7 @@ void main() {
     final summary = await reportsDao.watchSummary().first;
 
     expect(summary.remainingBalance, 0);
+    expect(summary.totalCollected, closeTo(100, 1e-10));
     expect(summary.totalProfit, closeTo(20, 1e-10));
   });
 
@@ -167,6 +170,7 @@ void main() {
     final summary = await reportsDao.watchSummary().first;
 
     expect(summary.remainingBalance, 0);
+    expect(summary.totalCollected, closeTo(140, 1e-10));
     expect(summary.totalProfit, closeTo(20, 1e-10));
   });
 
@@ -199,6 +203,7 @@ void main() {
 
     expect(summary.totalSales, 0);
     expect(summary.remainingBalance, 0);
+    expect(summary.totalCollected, 0);
     expect(summary.totalProfit, 0);
     expect(products, isEmpty);
   });

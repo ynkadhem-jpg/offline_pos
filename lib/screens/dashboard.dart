@@ -125,8 +125,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             if (!customersSnapshot.hasData) return const _SectionLoading();
             final cards = [
               _SummaryCard(
+                icon: Icons.account_balance_wallet_outlined,
+                title: 'إجمالي المستحصل',
+                value: _money(summary.totalCollected),
+              ),
+              _SummaryCard(
                 icon: Icons.payments_outlined,
-                title: 'إجمالي الأرباح',
+                title: 'صافي الربح',
                 value: _money(summary.totalProfit),
               ),
               _SummaryCard(
@@ -147,7 +152,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 value: _money(summary.remainingBalance),
               ),
             ];
-            return _ResponsiveWrap(wideColumns: 4, children: cards);
+            return _ResponsiveWrap(wideColumns: 5, children: cards);
           },
         );
       },

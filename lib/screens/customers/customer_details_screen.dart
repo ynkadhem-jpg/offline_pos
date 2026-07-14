@@ -250,10 +250,10 @@ class _SaleCard extends StatelessWidget {
         DataCell(
           installment.isPaid
               ? const SizedBox.shrink()
-              : FilledButton.tonalIcon(
+              : IconButton.filledTonal(
                   onPressed: () => _showPaymentDialog(context, installment),
+                  tooltip: 'تسجيل دفعة',
                   icon: const Icon(Icons.payments_outlined),
-                  label: const Text('تسجيل دفعة'),
                 ),
         ),
       ],
