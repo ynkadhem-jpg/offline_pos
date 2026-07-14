@@ -6,6 +6,7 @@ import '../design_system/tokens/app_spacing.dart';
 import '../services/customer_dao.dart';
 import '../services/customer_summary_dao.dart';
 import '../services/database.dart';
+import 'customers/customer_details_screen.dart';
 import 'customers/customer_form_dialog.dart';
 
 enum CustomerPaymentFilter { all, paidThisMonth, unpaidThisMonth }
@@ -75,13 +76,21 @@ class _CustomersScreenState extends State<CustomersScreen> {
     );
   }
 
+  Future<void> _showCustomerDetails(Customer customer) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) => CustomerDetailsScreen(customer: customer),
+      ),
+    );
+  }
+
   void _handleQuickPayment(CustomerSummary summary) {
     if (!summary.hasCurrentMonthInstallment || summary.isCurrentMonthPaid) {
       return;
     }
 
-    // TODO(task-4.1): Connect this action to PaymentDao when installment
-    // identifiers and the full-payment API are available.
+    // TODO(task-4.1): Connect to PaymentDao when installment identifiers and
+    // the full-payment API are available.
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('سيتم تفعيل الدفع السريع بعد إضافة خدمة الدفعات'),
@@ -204,6 +213,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                             customer: customer,
                             summary: _summaryFor(customer, summaries),
                             onQuickPayment: _handleQuickPayment,
+                            onTap: () => _showCustomerDetails(customer),
                           );
                         },
                       );
@@ -290,11 +300,13 @@ class _CustomerListItem extends StatelessWidget {
     required this.customer,
     required this.summary,
     required this.onQuickPayment,
+    required this.onTap,
   });
 
   final Customer customer;
   final CustomerSummary summary;
   final ValueChanged<CustomerSummary> onQuickPayment;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -303,66 +315,72 @@ class _CustomerListItem extends StatelessWidget {
 
     return Card(
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.cardPadding),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final customerDetails = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(customer.name, style: textTheme.titleMedium),
-                const SizedBox(height: AppSpacing.xs),
-                Text(customer.phone, style: textTheme.bodyMedium),
-              ],
-            );
-            final financialDetails = Wrap(
-              spacing: AppSpacing.lg,
-              runSpacing: AppSpacing.sm,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                _CustomerAmount(
-                  label: 'إجمالي المطلوب',
-                  value: '${currency.format(summary.totalOutstanding)} د.ع',
-                ),
-                _CustomerAmount(
-                  label: 'قسط هذا الشهر',
-                  value:
-                      '${currency.format(summary.currentMonthInstallmentAmount)} د.ع',
-                ),
-                _CustomerStatus(summary: summary),
-                if (summary.hasCurrentMonthInstallment &&
-                    !summary.isCurrentMonthPaid)
-                  Tooltip(
-                    message: 'تسديد قسط هذا الشهر',
-                    child: OutlinedButton.icon(
-                      onPressed: () => onQuickPayment(summary),
-                      icon: const Icon(Icons.payments_outlined),
-                      label: const Text('تسديد قسط هذا الشهر'),
-                    ),
-                  ),
-              ],
-            );
-
-            if (constraints.maxWidth < AppSpacing.xxl * 12) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.cardPadding),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final customerDetails = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  customerDetails,
-                  const SizedBox(height: AppSpacing.md),
-                  financialDetails,
+                  Text(customer.name, style: textTheme.titleMedium),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(customer.address, style: textTheme.bodyMedium),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(customer.phone, style: textTheme.bodyMedium),
                 ],
               );
-            }
+              final financialDetails = Wrap(
+                spacing: AppSpacing.lg,
+                runSpacing: AppSpacing.sm,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  _CustomerAmount(
+                    label: 'إجمالي المطلوب',
+                    value: '${currency.format(summary.totalOutstanding)} د.ع',
+                  ),
+                  _CustomerAmount(
+                    label: 'قسط هذا الشهر',
+                    value:
+                        '${currency.format(summary.currentMonthInstallmentAmount)} د.ع',
+                  ),
+                  _CustomerStatus(summary: summary),
+                  if (summary.hasCurrentMonthInstallment &&
+                      !summary.isCurrentMonthPaid)
+                    Tooltip(
+                      message: 'تسديد قسط هذا الشهر',
+                      child: OutlinedButton.icon(
+                        onPressed: () => onQuickPayment(summary),
+                        icon: const Icon(Icons.payments_outlined),
+                        label: const Text('تسديد قسط هذا الشهر'),
+                      ),
+                    ),
+                ],
+              );
 
-            return Row(
-              children: [
-                Expanded(child: customerDetails),
-                const SizedBox(width: AppSpacing.lg),
-                Expanded(child: financialDetails),
-              ],
-            );
-          },
+              if (constraints.maxWidth < AppSpacing.xxl * 12) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    customerDetails,
+                    const SizedBox(height: AppSpacing.md),
+                    financialDetails,
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(child: customerDetails),
+                  const SizedBox(width: AppSpacing.lg),
+                  Expanded(child: financialDetails),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
