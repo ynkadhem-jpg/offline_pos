@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../design_system/tokens/app_spacing.dart';
 import '../services/database.dart';
 import '../services/product_dao.dart';
+import 'products/deleted_products_screen.dart';
 import 'widgets/product_form_dialog.dart';
 
 enum ProductSortOption { nameAsc, nameDesc, priceAsc, priceDesc }
@@ -22,6 +23,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   String _searchQuery = '';
   ProductSortOption _sortOption = ProductSortOption.nameAsc;
+  final Set<int> _deletingProductIds = {};
 
   @override
   void initState() {
@@ -91,11 +93,86 @@ class _ProductsScreenState extends State<ProductsScreen> {
     );
   }
 
+  Future<void> _showDeletedProducts() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) => DeletedProductsScreen(productDao: _productDao),
+      ),
+    );
+  }
+
+  Future<void> _deleteProduct(Product product) async {
+    if (_deletingProductIds.contains(product.id)) {
+      return;
+    }
+
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('حذف المنتج؟'),
+        content: Text(
+          'هل تريد حذف المنتج "${product.name}"؟ يمكنك استرجاعه لاحقاً.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete != true || !context.mounted) {
+      return;
+    }
+
+    setState(() {
+      _deletingProductIds.add(product.id);
+    });
+
+    try {
+      final affectedRows = await _productDao.softDeleteProduct(product.id);
+      if (affectedRows != 1) {
+        throw StateError('Product was not soft-deleted.');
+      }
+
+      if (!context.mounted) {
+        return;
+      }
+
+      setState(() {
+        _deletingProductIds.remove(product.id);
+      });
+    } catch (_) {
+      if (!context.mounted) {
+        return;
+      }
+
+      setState(() {
+        _deletingProductIds.remove(product.id);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر حذف المنتج. يرجى المحاولة مرة أخرى')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('المنتجات'),
+        actions: [
+          IconButton(
+            onPressed: _showDeletedProducts,
+            tooltip: 'المنتجات المحذوفة',
+            icon: const Icon(Icons.restore_from_trash_outlined),
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(AppSpacing.screenPadding),
@@ -139,6 +216,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       return _ProductListItem(
                         product: products[index],
                         onEdit: () => _showProductForm(products[index]),
+                        onDelete: () => _deleteProduct(products[index]),
+                        isDeleting: _deletingProductIds.contains(
+                          products[index].id,
+                        ),
                       );
                     },
                   );
@@ -229,10 +310,14 @@ class _ProductListItem extends StatelessWidget {
   const _ProductListItem({
     required this.product,
     required this.onEdit,
+    required this.onDelete,
+    required this.isDeleting,
   });
 
   final Product product;
   final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final bool isDeleting;
 
   @override
   Widget build(BuildContext context) {
@@ -264,10 +349,24 @@ class _ProductListItem extends StatelessWidget {
             ),
             const SizedBox(width: AppSpacing.md),
             IconButton(
-              onPressed: onEdit,
+              onPressed: isDeleting ? null : onEdit,
               tooltip: 'تعديل المنتج',
               icon: const Icon(Icons.edit_outlined),
             ),
+            if (isDeleting)
+              const SizedBox.square(
+                dimension: AppSpacing.minTouchTarget,
+                child: Padding(
+                  padding: EdgeInsets.all(AppSpacing.md),
+                  child: CircularProgressIndicator(strokeWidth: AppSpacing.xs),
+                ),
+              )
+            else
+              IconButton(
+                onPressed: onDelete,
+                tooltip: 'حذف المنتج',
+                icon: const Icon(Icons.delete_outline),
+              ),
           ],
         ),
       ),
