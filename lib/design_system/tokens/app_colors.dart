@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 /// Central color definitions for the light theme.
 ///
 /// Material colors are generated from a seed color. Semantic colors are

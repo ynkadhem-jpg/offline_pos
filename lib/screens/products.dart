@@ -86,10 +86,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
   Future<void> _showProductForm([Product? product]) async {
     await showDialog<bool>(
       context: context,
-      builder: (context) => ProductFormDialog(
-        productDao: _productDao,
-        product: product,
-      ),
+      builder: (context) =>
+          ProductFormDialog(productDao: _productDao, product: product),
     );
   }
 
@@ -156,7 +154,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
         _deletingProductIds.remove(product.id);
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر حذف المنتج. يرجى المحاولة مرة أخرى')),
+        const SnackBar(
+          content: Text('تعذر حذف المنتج. يرجى المحاولة مرة أخرى'),
+        ),
       );
     }
   }
@@ -331,21 +331,13 @@ class _ProductListItem extends StatelessWidget {
           children: [
             SizedBox(
               width: AppSpacing.xxl + AppSpacing.xl,
-              child: Text(
-                '#${product.id}',
-                style: textTheme.labelLarge,
-              ),
+              child: Text('#${product.id}', style: textTheme.labelLarge),
             ),
-            Expanded(
-              child: Text(
-                product.name,
-                style: textTheme.titleMedium,
-              ),
-            ),
+            Expanded(child: Text(product.name, style: textTheme.titleMedium)),
             const SizedBox(width: AppSpacing.md),
             Text(
               '${currency.format(product.price)} د.ع',
-              style: textTheme.titleMedium,  
+              style: textTheme.titleMedium,
             ),
             const SizedBox(width: AppSpacing.md),
             IconButton(

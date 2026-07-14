@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 /// Typography tokens using IBM Plex Sans Arabic.
 ///
 /// TODO(offline-fonts): Bundle IBM Plex Sans Arabic in assets for guaranteed

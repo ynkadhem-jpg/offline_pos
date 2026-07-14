@@ -5,10 +5,7 @@ import 'database.dart';
 class ProductDao extends DatabaseAccessor<AppDatabase> {
   ProductDao(super.db);
 
-  Future<int> addProduct({
-    required String name,
-    required double price,
-  }) {
+  Future<int> addProduct({required String name, required double price}) {
     final now = DateTime.now();
 
     return into(attachedDatabase.products).insert(
@@ -26,9 +23,9 @@ class ProductDao extends DatabaseAccessor<AppDatabase> {
     required String name,
     required double price,
   }) {
-    return (update(attachedDatabase.products)
-          ..where((product) => product.id.equals(id)))
-        .write(
+    return (update(
+      attachedDatabase.products,
+    )..where((product) => product.id.equals(id))).write(
       ProductsCompanion(
         name: Value(name),
         price: Value(price),
@@ -38,9 +35,9 @@ class ProductDao extends DatabaseAccessor<AppDatabase> {
   }
 
   Future<int> softDeleteProduct(int id) {
-    return (update(attachedDatabase.products)
-          ..where((product) => product.id.equals(id)))
-        .write(
+    return (update(
+      attachedDatabase.products,
+    )..where((product) => product.id.equals(id))).write(
       ProductsCompanion(
         isDeleted: const Value(true),
         updatedAt: Value(DateTime.now()),
@@ -49,9 +46,9 @@ class ProductDao extends DatabaseAccessor<AppDatabase> {
   }
 
   Future<int> restoreProduct(int id) {
-    return (update(attachedDatabase.products)
-          ..where((product) => product.id.equals(id)))
-        .write(
+    return (update(
+      attachedDatabase.products,
+    )..where((product) => product.id.equals(id))).write(
       ProductsCompanion(
         isDeleted: const Value(false),
         updatedAt: Value(DateTime.now()),
@@ -76,17 +73,15 @@ class ProductDao extends DatabaseAccessor<AppDatabase> {
   }
 
   Stream<List<Product>> searchProductsByName(String query) {
-  final trimmed = query.trim();
+    final trimmed = query.trim();
 
-  final productsQuery = select(attachedDatabase.products)
-    ..where(
-      (product) =>
-          product.isDeleted.equals(false) &
-          product.name.like('%$trimmed%'),
-    )
-    ..orderBy([(product) => OrderingTerm.asc(product.name)]);
+    final productsQuery = select(attachedDatabase.products)
+      ..where(
+        (product) =>
+            product.isDeleted.equals(false) & product.name.like('%$trimmed%'),
+      )
+      ..orderBy([(product) => OrderingTerm.asc(product.name)]);
 
-  return productsQuery.watch();
-}
-   
+    return productsQuery.watch();
+  }
 }

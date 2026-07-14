@@ -11,8 +11,8 @@ class MainApp extends StatelessWidget {
   const MainApp({super.key});
 
   @override
-   Widget build(BuildContext context) {
-    return  MaterialApp(
+  Widget build(BuildContext context) {
+    return MaterialApp(
       theme: AppTheme.light,
       locale: const Locale('ar'),
       supportedLocales: const [Locale('ar')],

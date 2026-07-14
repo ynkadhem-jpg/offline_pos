@@ -26,9 +26,9 @@ class CustomerDao extends DatabaseAccessor<AppDatabase> {
     required String address,
     required String phone,
   }) {
-    return (update(attachedDatabase.customers)
-          ..where((customer) => customer.id.equals(id)))
-        .write(
+    return (update(
+      attachedDatabase.customers,
+    )..where((customer) => customer.id.equals(id))).write(
       CustomersCompanion(
         name: Value(name),
         address: Value(address),
@@ -40,17 +40,13 @@ class CustomerDao extends DatabaseAccessor<AppDatabase> {
   Future<int> softDeleteCustomer(int id) {
     return (update(attachedDatabase.customers)
           ..where((customer) => customer.id.equals(id)))
-        .write(
-      const CustomersCompanion(isDeleted: Value(true)),
-    );
+        .write(const CustomersCompanion(isDeleted: Value(true)));
   }
 
   Future<int> restoreCustomer(int id) {
     return (update(attachedDatabase.customers)
           ..where((customer) => customer.id.equals(id)))
-        .write(
-      const CustomersCompanion(isDeleted: Value(false)),
-    );
+        .write(const CustomersCompanion(isDeleted: Value(false)));
   }
 
   Stream<List<Customer>> watchCustomers() {

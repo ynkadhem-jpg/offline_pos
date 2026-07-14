@@ -5,11 +5,7 @@ import '../../services/database.dart';
 import '../../services/product_dao.dart';
 
 class ProductFormDialog extends StatefulWidget {
-  const ProductFormDialog({
-    required this.productDao,
-    this.product,
-    super.key,
-  });
+  const ProductFormDialog({required this.productDao, this.product, super.key});
 
   final ProductDao productDao;
   final Product? product;
@@ -157,9 +153,9 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                   const SizedBox(height: AppSpacing.fieldGap),
                   Text(
                     _submissionError!,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.error,
-                        ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: colorScheme.error),
                   ),
                 ],
               ],

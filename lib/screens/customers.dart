@@ -5,9 +5,7 @@ class CustomersScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('الزبائن'),
-      ),
+      appBar: AppBar(title: const Text('الزبائن')),
       body: const SizedBox.shrink(),
     );
   }

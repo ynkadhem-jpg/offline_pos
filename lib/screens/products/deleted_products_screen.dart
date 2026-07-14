@@ -5,16 +5,12 @@ import '../../services/database.dart';
 import '../../services/product_dao.dart';
 
 class DeletedProductsScreen extends StatefulWidget {
-  const DeletedProductsScreen({
-    required this.productDao,
-    super.key,
-  });
+  const DeletedProductsScreen({required this.productDao, super.key});
 
   final ProductDao productDao;
 
   @override
-  State<DeletedProductsScreen> createState() =>
-      _DeletedProductsScreenState();
+  State<DeletedProductsScreen> createState() => _DeletedProductsScreenState();
 }
 
 class _DeletedProductsScreenState extends State<DeletedProductsScreen> {
@@ -144,9 +140,7 @@ class _DeletedProductListItem extends StatelessWidget {
               width: AppSpacing.xxl + AppSpacing.xl,
               child: Text('#${product.id}', style: textTheme.labelLarge),
             ),
-            Expanded(
-              child: Text(product.name, style: textTheme.titleMedium),
-            ),
+            Expanded(child: Text(product.name, style: textTheme.titleMedium)),
             const SizedBox(width: AppSpacing.md),
             Text(
               '${product.price.toStringAsFixed(2)} د.ع',
@@ -198,10 +192,7 @@ class _DeletedProductsMessage extends StatelessWidget {
           ),
           if (actionLabel != null && onAction != null) ...[
             const SizedBox(height: AppSpacing.md),
-            OutlinedButton(
-              onPressed: onAction,
-              child: Text(actionLabel!),
-            ),
+            OutlinedButton(onPressed: onAction, child: Text(actionLabel!)),
           ],
         ],
       ),
