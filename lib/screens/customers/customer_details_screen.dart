@@ -201,18 +201,52 @@ class _SaleCard extends StatelessWidget {
     );
   }
 
+  int _overdueDays(Installment installment) {
+    if (installment.isPaid) {
+      return 0;
+    }
+
+    final now = DateTime.now();
+    final today = DateTime.utc(now.year, now.month, now.day);
+    final dueDate = DateTime.utc(
+      installment.dueDate.year,
+      installment.dueDate.month,
+      installment.dueDate.day,
+    );
+    if (!dueDate.isBefore(today)) {
+      return 0;
+    }
+
+    return today.difference(dueDate).inDays;
+  }
+
   DataRow _installmentRow(BuildContext context, Installment installment) {
     final calculatedRemaining = installment.actualDue - installment.totalPaid;
     final remaining = calculatedRemaining > 0 ? calculatedRemaining : 0.0;
+    final overdueDays = _overdueDays(installment);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return DataRow(
+      color: overdueDays > 0
+          ? WidgetStatePropertyAll(colorScheme.errorContainer)
+          : null,
       cells: [
         DataCell(Text('${installment.monthNumber}')),
         DataCell(Text(_date(installment.dueDate))),
         DataCell(Text(_money(installment.actualDue))),
         DataCell(Text(_money(installment.totalPaid))),
         DataCell(Text(_money(remaining))),
-        DataCell(Text(remaining == 0 ? 'مدفوع' : 'غير مدفوع')),
+        DataCell(
+          overdueDays > 0
+              ? Text(
+                  'متأخر $overdueDays يوم',
+                  style: TextStyle(
+                    color: colorScheme.error,
+                    fontWeight: FontWeight.bold,
+                  ),
+                )
+              : Text(remaining == 0 ? 'مدفوع' : 'غير مدفوع'),
+        ),
         DataCell(
           installment.isPaid
               ? const SizedBox.shrink()

@@ -10,7 +10,9 @@ import 'widgets/product_form_dialog.dart';
 enum ProductSortOption { nameAsc, nameDesc, priceAsc, priceDesc }
 
 class ProductsScreen extends StatefulWidget {
-  const ProductsScreen({super.key});
+  const ProductsScreen({required this.database, super.key});
+
+  final AppDatabase database;
 
   @override
   State<ProductsScreen> createState() => _ProductsScreenState();
@@ -28,7 +30,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
   @override
   void initState() {
     super.initState();
-    _db = AppDatabase();
+    _db = widget.database;
     _productDao = ProductDao(_db);
     _searchController = TextEditingController();
   }
@@ -36,7 +38,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
   @override
   void dispose() {
     _searchController.dispose();
-    _db.close();
     super.dispose();
   }
 

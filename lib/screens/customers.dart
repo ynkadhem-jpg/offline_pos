@@ -11,11 +11,14 @@ import '../services/product_dao.dart';
 import '../services/sale_dao.dart';
 import 'customers/customer_details_screen.dart';
 import 'customers/customer_form_dialog.dart';
+import 'customers/payment_dialog.dart';
 
 enum CustomerPaymentFilter { all, paidThisMonth, unpaidThisMonth }
 
 class CustomersScreen extends StatefulWidget {
-  const CustomersScreen({super.key});
+  const CustomersScreen({required this.database, super.key});
+
+  final AppDatabase database;
 
   @override
   State<CustomersScreen> createState() => _CustomersScreenState();
@@ -37,7 +40,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
   @override
   void initState() {
     super.initState();
-    _db = AppDatabase();
+    _db = widget.database;
     _customerDao = CustomerDao(_db);
     _customerSummaryDao = CustomerSummaryDao(_db);
     _productDao = ProductDao(_db);
@@ -50,7 +53,6 @@ class _CustomersScreenState extends State<CustomersScreen> {
   @override
   void dispose() {
     _searchController.dispose();
-    _db.close();
     super.dispose();
   }
 
@@ -97,16 +99,76 @@ class _CustomersScreenState extends State<CustomersScreen> {
     );
   }
 
-  void _handleQuickPayment(CustomerSummary summary) {
-    if (!summary.hasCurrentMonthInstallment || summary.isCurrentMonthPaid) {
-      return;
-    }
+  Future<void> _handleQuickPayment(Customer customer) async {
+    try {
+      final sales = await _saleDao.watchCustomerSales(customer.id).first;
+      final now = DateTime.now();
+      final monthStart = DateTime(now.year, now.month);
+      final nextMonthStart = DateTime(now.year, now.month + 1);
+      final currentInstallments = <({Installment installment, String product})>[
+        for (final details in sales)
+          for (final installment in details.installments)
+            if (!installment.dueDate.isBefore(monthStart) &&
+                installment.dueDate.isBefore(nextMonthStart) &&
+                !installment.isPaid &&
+                installment.totalPaid < installment.actualDue)
+              (installment: installment, product: details.product.name),
+      ];
 
-    // TODO(task-4.1): Connect to PaymentDao when installment identifiers and
-    // the full-payment API are available.
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('سيتم تفعيل الدفع السريع بعد إضافة خدمة الدفعات'),
+      if (!context.mounted) {
+        return;
+      }
+      if (currentInstallments.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('لا يوجد قسط غير مدفوع لهذا الشهر')),
+        );
+        return;
+      }
+
+      final selected = currentInstallments.length == 1
+          ? currentInstallments.single.installment
+          : await _selectCurrentInstallment(currentInstallments);
+      if (selected == null || !context.mounted) {
+        return;
+      }
+
+      await showDialog<void>(
+        context: context,
+        builder: (context) => PaymentDialog(
+          installment: selected,
+          paymentDao: _paymentDao,
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذر تحميل قسط هذا الشهر: $error')),
+      );
+    }
+  }
+
+  Future<Installment?> _selectCurrentInstallment(
+    List<({Installment installment, String product})> installments,
+  ) {
+    final currency = NumberFormat.decimalPattern('en');
+    return showDialog<Installment>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('اختر القسط المراد تسديده'),
+        children: [
+          for (final entry in installments)
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(context).pop(entry.installment),
+              child: ListTile(
+                title: Text(entry.product),
+                subtitle: Text(
+                  '${currency.format(entry.installment.actualDue - entry.installment.totalPaid)} د.ع متبقي',
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -317,7 +379,7 @@ class _CustomerListItem extends StatelessWidget {
 
   final Customer customer;
   final CustomerSummary summary;
-  final ValueChanged<CustomerSummary> onQuickPayment;
+  final ValueChanged<Customer> onQuickPayment;
   final VoidCallback onTap;
 
   @override
@@ -365,7 +427,7 @@ class _CustomerListItem extends StatelessWidget {
                     Tooltip(
                       message: 'تسديد قسط هذا الشهر',
                       child: OutlinedButton.icon(
-                        onPressed: () => onQuickPayment(summary),
+                        onPressed: () => onQuickPayment(customer),
                         icon: const Icon(Icons.payments_outlined),
                         label: const Text('تسديد قسط هذا الشهر'),
                       ),

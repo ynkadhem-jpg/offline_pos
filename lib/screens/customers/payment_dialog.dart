@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../design_system/tokens/app_spacing.dart';
 import '../../services/database.dart';
@@ -28,7 +29,11 @@ class _PaymentDialogState extends State<PaymentDialog> {
   @override
   void initState() {
     super.initState();
-    _amountController = TextEditingController()..addListener(_onAmountChanged);
+    final remainingAmount =
+        widget.installment.actualDue - widget.installment.totalPaid;
+    _amountController = TextEditingController(
+      text: _editableAmount(remainingAmount > 0 ? remainingAmount : 0),
+    )..addListener(_onAmountChanged);
     _noteController = TextEditingController();
     _paymentDate = DateUtils.dateOnly(DateTime.now());
   }
@@ -131,9 +136,36 @@ class _PaymentDialogState extends State<PaymentDialog> {
     return '${date.year}/$month/$day';
   }
 
+  String _editableAmount(double value) {
+    return value == value.truncateToDouble()
+        ? value.toInt().toString()
+        : value.toString();
+  }
+
+  String _formatInstallmentMonth(DateTime date) {
+    const monthNames = [
+      'يناير',
+      'فبراير',
+      'مارس',
+      'أبريل',
+      'مايو',
+      'يونيو',
+      'يوليو',
+      'أغسطس',
+      'سبتمبر',
+      'أكتوبر',
+      'نوفمبر',
+      'ديسمبر',
+    ];
+    return '${monthNames[date.month - 1]} ${date.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final remainingAmount =
+        widget.installment.actualDue - widget.installment.totalPaid;
+    final currency = NumberFormat.decimalPattern('en');
 
     return AlertDialog(
       title: const Text('تسجيل دفعة'),
@@ -144,6 +176,27 @@ class _PaymentDialogState extends State<PaymentDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Card(
+                margin: EdgeInsets.zero,
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.cardPadding),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'قسط شهر ${_formatInstallmentMonth(widget.installment.dueDate)}',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        'المبلغ المتبقي: '
+                        '${currency.format(remainingAmount)} د.ع',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.fieldGap),
               TextField(
                 controller: _amountController,
                 enabled: !_isSubmitting,
