@@ -153,6 +153,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
       setState(() {
         _deletingProductIds.remove(product.id);
       });
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('تعذر حذف المنتج. يرجى المحاولة مرة أخرى'),

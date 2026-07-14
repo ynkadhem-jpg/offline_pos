@@ -1,25 +1,22 @@
 import 'package:flutter/material.dart';
 
 import '../../design_system/tokens/app_spacing.dart';
-import '../../services/database.dart';
-import '../../services/product_dao.dart';
+import '../../services/customer_dao.dart';
 
-class ProductFormDialog extends StatefulWidget {
-  const ProductFormDialog({required this.productDao, this.product, super.key});
+class CustomerFormDialog extends StatefulWidget {
+  const CustomerFormDialog({required this.customerDao, super.key});
 
-  final ProductDao productDao;
-  final Product? product;
-
-  bool get isEditing => product != null;
+  final CustomerDao customerDao;
 
   @override
-  State<ProductFormDialog> createState() => _ProductFormDialogState();
+  State<CustomerFormDialog> createState() => _CustomerFormDialogState();
 }
 
-class _ProductFormDialogState extends State<ProductFormDialog> {
+class _CustomerFormDialogState extends State<CustomerFormDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
-  late final TextEditingController _priceController;
+  late final TextEditingController _addressController;
+  late final TextEditingController _phoneController;
 
   bool _isSubmitting = false;
   String? _submissionError;
@@ -27,39 +24,36 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.product?.name ?? '');
-    _priceController = TextEditingController(
-      text: widget.product?.price.toString() ?? '',
-    );
+    _nameController = TextEditingController();
+    _addressController = TextEditingController();
+    _phoneController = TextEditingController();
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _priceController.dispose();
+    _addressController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
-  String? _validateName(String? value) {
+  String? _validateRequired(String? value, String message) {
     if (value == null || value.trim().isEmpty) {
-      return 'يرجى إدخال اسم المنتج';
+      return message;
     }
-
     return null;
   }
 
-  String? _validatePrice(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'يرجى إدخال السعر';
+  String? _validatePhone(String? value) {
+    final requiredError = _validateRequired(value, 'يرجى إدخال رقم الهاتف');
+    if (requiredError != null) {
+      return requiredError;
     }
 
-    final normalizedValue = value.trim().replaceAll('٫', '.');
-    final price = double.tryParse(normalizedValue);
-
-    if (price == null || !price.isFinite || price <= 0) {
-      return 'يرجى إدخال سعر أكبر من صفر';
+    final validPhoneCharacters = RegExp(r'^[0-9٠-٩۰-۹+()\-\s]+$');
+    if (!validPhoneCharacters.hasMatch(value!.trim())) {
+      return 'رقم الهاتف يحتوي على رموز غير صالحة';
     }
-
     return null;
   }
 
@@ -73,38 +67,24 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
       _submissionError = null;
     });
 
-    final name = _nameController.text.trim();
-    final price = double.parse(
-      _priceController.text.trim().replaceAll('٫', '.'),
-    );
-
     try {
-      final product = widget.product;
-
-      if (product == null) {
-        await widget.productDao.addProduct(name: name, price: price);
-      } else {
-        await widget.productDao.updateProduct(
-          id: product.id,
-          name: name,
-          price: price,
-        );
-      }
+      await widget.customerDao.addCustomer(
+        name: _nameController.text.trim(),
+        address: _addressController.text.trim(),
+        phone: _phoneController.text.trim(),
+      );
 
       if (!context.mounted) {
         return;
       }
-
-      // ignore: use_build_context_synchronously
       Navigator.of(context).pop(true);
     } catch (_) {
       if (!context.mounted) {
         return;
       }
-
       setState(() {
         _isSubmitting = false;
-        _submissionError = 'تعذر حفظ المنتج. يرجى المحاولة مرة أخرى';
+        _submissionError = 'تعذر حفظ الزبون. يرجى المحاولة مرة أخرى';
       });
     }
   }
@@ -114,7 +94,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return AlertDialog(
-      title: Text(widget.isEditing ? 'تعديل المنتج' : 'إضافة منتج'),
+      title: const Text('إضافة زبون'),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: AppSpacing.xxl * 10),
         child: SingleChildScrollView(
@@ -122,32 +102,42 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
             key: _formKey,
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TextFormField(
                   controller: _nameController,
                   enabled: !_isSubmitting,
                   autofocus: true,
                   textInputAction: TextInputAction.next,
-                  validator: _validateName,
+                  validator: (value) =>
+                      _validateRequired(value, 'يرجى إدخال اسم الزبون'),
                   decoration: const InputDecoration(
-                    labelText: 'اسم المنتج',
-                    prefixIcon: Icon(Icons.inventory_2_outlined),
+                    labelText: 'اسم الزبون',
+                    prefixIcon: Icon(Icons.person_outline),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.fieldGap),
                 TextFormField(
-                  controller: _priceController,
+                  controller: _addressController,
                   enabled: !_isSubmitting,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
+                  textInputAction: TextInputAction.next,
+                  validator: (value) =>
+                      _validateRequired(value, 'يرجى إدخال العنوان'),
+                  decoration: const InputDecoration(
+                    labelText: 'العنوان',
+                    prefixIcon: Icon(Icons.location_on_outlined),
                   ),
+                ),
+                const SizedBox(height: AppSpacing.fieldGap),
+                TextFormField(
+                  controller: _phoneController,
+                  enabled: !_isSubmitting,
+                  keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.done,
-                  validator: _validatePrice,
+                  validator: _validatePhone,
                   onFieldSubmitted: (_) => _submit(),
                   decoration: const InputDecoration(
-                    labelText: 'السعر',
-                    prefixIcon: Icon(Icons.payments_outlined),
+                    labelText: 'رقم الهاتف',
+                    prefixIcon: Icon(Icons.phone_outlined),
                   ),
                 ),
                 if (_submissionError != null) ...[
@@ -176,7 +166,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                   dimension: AppSpacing.lg,
                   child: CircularProgressIndicator(strokeWidth: AppSpacing.xs),
                 )
-              : Text(widget.isEditing ? 'حفظ' : 'إضافة'),
+              : const Text('إضافة'),
         ),
       ],
     );

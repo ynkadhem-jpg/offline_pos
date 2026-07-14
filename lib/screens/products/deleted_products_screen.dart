@@ -60,6 +60,7 @@ class _DeletedProductsScreenState extends State<DeletedProductsScreen> {
       setState(() {
         _restoringProductIds.remove(product.id);
       });
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('تعذر استرجاع المنتج. يرجى المحاولة مرة أخرى'),

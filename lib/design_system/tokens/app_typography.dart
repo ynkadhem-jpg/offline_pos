@@ -3,8 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 /// Typography tokens using IBM Plex Sans Arabic.
 ///
-/// TODO(offline-fonts): Bundle IBM Plex Sans Arabic in assets for guaranteed
-/// offline availability instead of relying on google_fonts network download.
+/// Note: Currently relies on google_fonts network download. Consider bundling
+/// IBM Plex Sans Arabic in assets for guaranteed offline availability.
 abstract final class AppTypography {
   static TextTheme textTheme(ColorScheme colorScheme) {
     final base = ThemeData(brightness: colorScheme.brightness).textTheme;
