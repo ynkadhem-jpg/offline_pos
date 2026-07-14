@@ -76,16 +76,17 @@ class ProductDao extends DatabaseAccessor<AppDatabase> {
   }
 
   Stream<List<Product>> searchProductsByName(String query) {
-    final normalizedQuery = query.trim().toLowerCase();
+  final trimmed = query.trim();
 
-    final productsQuery = select(attachedDatabase.products)
-      ..where(
-        (product) =>
-            product.isDeleted.equals(false) &
-            product.name.lower().contains(normalizedQuery),
-      )
-      ..orderBy([(product) => OrderingTerm.asc(product.name)]);
+  final productsQuery = select(attachedDatabase.products)
+    ..where(
+      (product) =>
+          product.isDeleted.equals(false) &
+          product.name.like('%$trimmed%'),
+    )
+    ..orderBy([(product) => OrderingTerm.asc(product.name)]);
 
-    return productsQuery.watch();
-  }
+  return productsQuery.watch();
+}
+   
 }
