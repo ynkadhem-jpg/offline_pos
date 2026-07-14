@@ -6,6 +6,9 @@ import '../design_system/tokens/app_spacing.dart';
 import '../services/customer_dao.dart';
 import '../services/customer_summary_dao.dart';
 import '../services/database.dart';
+import '../services/payment_dao.dart';
+import '../services/product_dao.dart';
+import '../services/sale_dao.dart';
 import 'customers/customer_details_screen.dart';
 import 'customers/customer_form_dialog.dart';
 
@@ -22,6 +25,9 @@ class _CustomersScreenState extends State<CustomersScreen> {
   late final AppDatabase _db;
   late final CustomerDao _customerDao;
   late final CustomerSummaryDao _customerSummaryDao;
+  late final ProductDao _productDao;
+  late final PaymentDao _paymentDao;
+  late final SaleDao _saleDao;
   late final Stream<List<CustomerSummary>> _customerSummariesStream;
   late final TextEditingController _searchController;
 
@@ -34,6 +40,9 @@ class _CustomersScreenState extends State<CustomersScreen> {
     _db = AppDatabase();
     _customerDao = CustomerDao(_db);
     _customerSummaryDao = CustomerSummaryDao(_db);
+    _productDao = ProductDao(_db);
+    _paymentDao = PaymentDao(_db);
+    _saleDao = SaleDao(_db);
     _customerSummariesStream = _customerSummaryDao.watchCustomerSummaries();
     _searchController = TextEditingController();
   }
@@ -78,7 +87,12 @@ class _CustomersScreenState extends State<CustomersScreen> {
   Future<void> _showCustomerDetails(Customer customer) async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
-        builder: (context) => CustomerDetailsScreen(customer: customer),
+        builder: (context) => CustomerDetailsScreen(
+          customer: customer,
+          paymentDao: _paymentDao,
+          productDao: _productDao,
+          saleDao: _saleDao,
+        ),
       ),
     );
   }

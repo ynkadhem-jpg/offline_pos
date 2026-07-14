@@ -45,6 +45,16 @@ Technology stack:
 - Follow Flutter lints.
 
 ---
+## Money Formatting Rules
+
+- All displayed monetary values must use the existing NumberFormat instance.
+- Display every monetary value as:
+  ${currency.format(value)} د.ع
+- Keep money formatting consistent across the entire application.
+- Do not format monetary values inside the database or business logic.
+- Money formatting is a UI concern only.
+
+---
 
 # Drift Rules
 
