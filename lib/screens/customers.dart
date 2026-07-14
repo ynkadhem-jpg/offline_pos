@@ -34,8 +34,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
     _db = AppDatabase();
     _customerDao = CustomerDao(_db);
     _customerSummaryDao = CustomerSummaryDao(_db);
-    _customerSummariesStream =
-        _customerSummaryDao.watchCustomerSummaries();
+    _customerSummariesStream = _customerSummaryDao.watchCustomerSummaries();
     _searchController = TextEditingController();
   }
 
@@ -117,8 +116,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
       case CustomerPaymentFilter.all:
         return true;
       case CustomerPaymentFilter.paidThisMonth:
-        return summary.hasCurrentMonthInstallment &&
-            summary.isCurrentMonthPaid;
+        return summary.hasCurrentMonthInstallment && summary.isCurrentMonthPaid;
       case CustomerPaymentFilter.unpaidThisMonth:
         return summary.hasCurrentMonthInstallment &&
             !summary.isCurrentMonthPaid;
@@ -424,7 +422,9 @@ class _CustomerStatus extends StatelessWidget {
     return Chip(
       avatar: Icon(icon, color: color),
       label: Text(label),
-      labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(color: color),
+      labelStyle: Theme.of(
+        context,
+      ).textTheme.labelLarge?.copyWith(color: color),
       side: BorderSide(color: color),
     );
   }
@@ -433,9 +433,7 @@ class _CustomerStatus extends StatelessWidget {
 class _CustomersMessage extends StatelessWidget {
   const _CustomersMessage({required this.message}) : isLoading = false;
 
-  const _CustomersMessage.loading()
-      : message = '',
-        isLoading = true;
+  const _CustomersMessage.loading() : message = '', isLoading = true;
 
   final String message;
   final bool isLoading;

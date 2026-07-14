@@ -19,9 +19,7 @@ class CustomerDetailsScreen extends StatelessWidget {
         child: Align(
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: AppSpacing.xxl * 18,
-            ),
+            constraints: const BoxConstraints(maxWidth: AppSpacing.xxl * 18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -32,10 +30,7 @@ class CustomerDetailsScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
-                          'المعلومات الأساسية',
-                          style: textTheme.titleLarge,
-                        ),
+                        Text('المعلومات الأساسية', style: textTheme.titleLarge),
                         const SizedBox(height: AppSpacing.lg),
                         _CustomerDetailRow(
                           icon: Icons.person_outline,
