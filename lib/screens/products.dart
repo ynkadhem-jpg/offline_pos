@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../design_system/tokens/app_spacing.dart';
 import '../services/database.dart';
 import '../services/product_dao.dart';
+import 'widgets/product_form_dialog.dart';
 
 enum ProductSortOption { nameAsc, nameDesc, priceAsc, priceDesc }
 
@@ -79,6 +81,16 @@ class _ProductsScreenState extends State<ProductsScreen> {
     });
   }
 
+  Future<void> _showProductForm([Product? product]) async {
+    await showDialog<bool>(
+      context: context,
+      builder: (context) => ProductFormDialog(
+        productDao: _productDao,
+        product: product,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -94,6 +106,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
               sortOption: _sortOption,
               onSearchChanged: _onSearchChanged,
               onSortChanged: _onSortChanged,
+              onAddProduct: _showProductForm,
             ),
             const SizedBox(height: AppSpacing.lg),
             Expanded(
@@ -123,7 +136,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     separatorBuilder: (context, index) =>
                         const SizedBox(height: AppSpacing.sm),
                     itemBuilder: (context, index) {
-                      return _ProductListItem(product: products[index]);
+                      return _ProductListItem(
+                        product: products[index],
+                        onEdit: () => _showProductForm(products[index]),
+                      );
                     },
                   );
                 },
@@ -142,12 +158,14 @@ class _ProductControls extends StatelessWidget {
     required this.sortOption,
     required this.onSearchChanged,
     required this.onSortChanged,
+    required this.onAddProduct,
   });
 
   final TextEditingController searchController;
   final ProductSortOption sortOption;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<ProductSortOption?> onSortChanged;
+  final VoidCallback onAddProduct;
 
   @override
   Widget build(BuildContext context) {
@@ -170,7 +188,7 @@ class _ProductControls extends StatelessWidget {
         SizedBox(
           width: AppSpacing.xxl * 5,
           child: DropdownButtonFormField<ProductSortOption>(
-            value: sortOption,
+            initialValue: sortOption,
             decoration: const InputDecoration(
               labelText: 'الترتيب',
               prefixIcon: Icon(Icons.sort),
@@ -196,20 +214,30 @@ class _ProductControls extends StatelessWidget {
             onChanged: onSortChanged,
           ),
         ),
+        const SizedBox(width: AppSpacing.md),
+        FilledButton.icon(
+          onPressed: onAddProduct,
+          icon: const Icon(Icons.add),
+          label: const Text('إضافة منتج'),
+        ),
       ],
     );
   }
 }
 
 class _ProductListItem extends StatelessWidget {
-  const _ProductListItem({required this.product});
+  const _ProductListItem({
+    required this.product,
+    required this.onEdit,
+  });
 
   final Product product;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-
+    final currency = NumberFormat.decimalPattern('en');
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
@@ -231,8 +259,14 @@ class _ProductListItem extends StatelessWidget {
             ),
             const SizedBox(width: AppSpacing.md),
             Text(
-              product.price.toStringAsFixed(2),
-              style: textTheme.titleMedium,
+              '${currency.format(product.price)} د.ع',
+              style: textTheme.titleMedium,  
+            ),
+            const SizedBox(width: AppSpacing.md),
+            IconButton(
+              onPressed: onEdit,
+              tooltip: 'تعديل المنتج',
+              icon: const Icon(Icons.edit_outlined),
             ),
           ],
         ),
