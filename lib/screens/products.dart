@@ -1,7 +1,10 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../design_system/tokens/app_spacing.dart';
 import '../services/database.dart';
+import '../services/product_dao.dart';
+
+enum ProductSortOption { nameAsc, nameDesc, priceAsc, priceDesc }
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -11,35 +14,69 @@ class ProductsScreen extends StatefulWidget {
 }
 
 class _ProductsScreenState extends State<ProductsScreen> {
-  final AppDatabase _db = AppDatabase();
+  late final AppDatabase _db;
+  late final ProductDao _productDao;
+  late final TextEditingController _searchController;
+
+  String _searchQuery = '';
+  ProductSortOption _sortOption = ProductSortOption.nameAsc;
+
+  @override
+  void initState() {
+    super.initState();
+    _db = AppDatabase();
+    _productDao = ProductDao(_db);
+    _searchController = TextEditingController();
+  }
 
   @override
   void dispose() {
+    _searchController.dispose();
     _db.close();
     super.dispose();
   }
 
-  Future<void> _testDatabaseConnection() async {
-    try {
-      final now = DateTime.now();
-      final id = await _db.into(_db.products).insert(
-            ProductsCompanion.insert(
-              name: 'منتج تجريبي',
-              price: 99.0,
-              createdAt: now,
-              updatedAt: now,
-            ),
-          );
+  Stream<List<Product>> _productsStream() {
+    final query = _searchQuery.trim();
 
-      final product = await (_db.select(_db.products)
-            ..where((row) => row.id.equals(id)))
-          .getSingle();
-
-      debugPrint('Task 0.3 DB test — retrieved product: $product');
-    } catch (error, stackTrace) {
-      debugPrint('Task 0.3 DB test failed: $error');
-      debugPrint('$stackTrace');
+    if (query.isEmpty) {
+      return _productDao.watchActiveProducts();
     }
+
+    return _productDao.searchProductsByName(query);
+  }
+
+  List<Product> _sortProducts(List<Product> products) {
+    final sortedProducts = [...products];
+
+    switch (_sortOption) {
+      case ProductSortOption.nameAsc:
+        sortedProducts.sort((a, b) => a.name.compareTo(b.name));
+      case ProductSortOption.nameDesc:
+        sortedProducts.sort((a, b) => b.name.compareTo(a.name));
+      case ProductSortOption.priceAsc:
+        sortedProducts.sort((a, b) => a.price.compareTo(b.price));
+      case ProductSortOption.priceDesc:
+        sortedProducts.sort((a, b) => b.price.compareTo(a.price));
+    }
+
+    return sortedProducts;
+  }
+
+  void _onSearchChanged(String value) {
+    setState(() {
+      _searchQuery = value;
+    });
+  }
+
+  void _onSortChanged(ProductSortOption? value) {
+    if (value == null) {
+      return;
+    }
+
+    setState(() {
+      _sortOption = value;
+    });
   }
 
   @override
@@ -48,14 +85,175 @@ class _ProductsScreenState extends State<ProductsScreen> {
       appBar: AppBar(
         title: const Text('المنتجات'),
       ),
-      body: kDebugMode
-          ? Center(
-              child: FilledButton(
-                onPressed: _testDatabaseConnection,
-                child: const Text('[DEV] اختبار قاعدة البيانات'),
+      body: Padding(
+        padding: const EdgeInsets.all(AppSpacing.screenPadding),
+        child: Column(
+          children: [
+            _ProductControls(
+              searchController: _searchController,
+              sortOption: _sortOption,
+              onSearchChanged: _onSearchChanged,
+              onSortChanged: _onSortChanged,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Expanded(
+              child: StreamBuilder<List<Product>>(
+                stream: _productsStream(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (snapshot.hasError) {
+                    return const _ProductsMessage(
+                      message: 'حدث خطأ أثناء تحميل المنتجات',
+                    );
+                  }
+
+                  final products = _sortProducts(snapshot.data ?? []);
+
+                  if (products.isEmpty) {
+                    return const _ProductsMessage(
+                      message: 'لا توجد منتجات لعرضها',
+                    );
+                  }
+
+                  return ListView.separated(
+                    itemCount: products.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: AppSpacing.sm),
+                    itemBuilder: (context, index) {
+                      return _ProductListItem(product: products[index]);
+                    },
+                  );
+                },
               ),
-            )
-          : const SizedBox.shrink(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProductControls extends StatelessWidget {
+  const _ProductControls({
+    required this.searchController,
+    required this.sortOption,
+    required this.onSearchChanged,
+    required this.onSortChanged,
+  });
+
+  final TextEditingController searchController;
+  final ProductSortOption sortOption;
+  final ValueChanged<String> onSearchChanged;
+  final ValueChanged<ProductSortOption?> onSortChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: TextField(
+            controller: searchController,
+            onChanged: onSearchChanged,
+            textInputAction: TextInputAction.search,
+            decoration: const InputDecoration(
+              labelText: 'بحث',
+              hintText: 'ابحث باسم المنتج',
+              prefixIcon: Icon(Icons.search),
+            ),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        SizedBox(
+          width: AppSpacing.xxl * 5,
+          child: DropdownButtonFormField<ProductSortOption>(
+            value: sortOption,
+            decoration: const InputDecoration(
+              labelText: 'الترتيب',
+              prefixIcon: Icon(Icons.sort),
+            ),
+            items: const [
+              DropdownMenuItem(
+                value: ProductSortOption.nameAsc,
+                child: Text('الاسم تصاعدي'),
+              ),
+              DropdownMenuItem(
+                value: ProductSortOption.nameDesc,
+                child: Text('الاسم تنازلي'),
+              ),
+              DropdownMenuItem(
+                value: ProductSortOption.priceAsc,
+                child: Text('السعر تصاعدي'),
+              ),
+              DropdownMenuItem(
+                value: ProductSortOption.priceDesc,
+                child: Text('السعر تنازلي'),
+              ),
+            ],
+            onChanged: onSortChanged,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProductListItem extends StatelessWidget {
+  const _ProductListItem({required this.product});
+
+  final Product product;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.cardPadding),
+        child: Row(
+          children: [
+            SizedBox(
+              width: AppSpacing.xxl + AppSpacing.xl,
+              child: Text(
+                '#${product.id}',
+                style: textTheme.labelLarge,
+              ),
+            ),
+            Expanded(
+              child: Text(
+                product.name,
+                style: textTheme.titleMedium,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Text(
+              product.price.toStringAsFixed(2),
+              style: textTheme.titleMedium,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProductsMessage extends StatelessWidget {
+  const _ProductsMessage({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        message,
+        style: Theme.of(context).textTheme.titleMedium,
+        textAlign: TextAlign.center,
+      ),
     );
   }
 }
