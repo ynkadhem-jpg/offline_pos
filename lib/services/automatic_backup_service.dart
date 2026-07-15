@@ -80,9 +80,7 @@ class AutomaticBackupService {
     required bool enforceMinimumInterval,
   }) async {
     if (_isRunning) {
-      return const AutomaticBackupResult(
-        AutomaticBackupStatus.alreadyRunning,
-      );
+      return const AutomaticBackupResult(AutomaticBackupStatus.alreadyRunning);
     }
     _isRunning = true;
 

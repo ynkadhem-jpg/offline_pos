@@ -27,6 +27,8 @@ class _MainShellState extends State<MainShell> {
   AppDatabase _database = AppDatabase();
   final LocalBackupService _backupService = LocalBackupService();
   late final AutomaticBackupService _automaticBackupService;
+  Timer? _startupBackupTimer;
+  Timer? _dataChangeBackupTimer;
   int _databaseGeneration = 0;
 
   static const _destinations = [
@@ -65,39 +67,39 @@ class _MainShellState extends State<MainShell> {
       storage: const AndroidAutomaticBackupStorage(),
       timestampStore: SharedPreferencesAutomaticBackupTimestampStore(),
     );
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        unawaited(_automaticBackupService.runIfDue(_database));
-      }
+    _startupBackupTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted) unawaited(_automaticBackupService.runIfDue(_database));
     });
   }
 
-  List<Widget> get _screens => [
-    DashboardScreen(
-      key: ValueKey('dashboard_$_databaseGeneration'),
-      database: _database,
-    ),
-    CustomersScreen(
-      key: ValueKey('customers_$_databaseGeneration'),
-      database: _database,
-      onDataChanged: _createImmediateBackup,
-    ),
-    ProductsScreen(
-      key: ValueKey('products_$_databaseGeneration'),
-      database: _database,
-      onDataChanged: _createImmediateBackup,
-    ),
-    AccountsScreen(
-      key: ValueKey('accounts_$_databaseGeneration'),
-      database: _database,
-    ),
-    SettingsScreen(
-      key: ValueKey('settings_$_databaseGeneration'),
-      database: _database,
-      backupService: _backupService,
-      onDatabaseChanged: _replaceDatabase,
-    ),
-  ];
+  Widget _buildSelectedScreen() {
+    return switch (_selectedIndex) {
+      0 => DashboardScreen(
+        key: ValueKey('dashboard_$_databaseGeneration'),
+        database: _database,
+      ),
+      1 => CustomersScreen(
+        key: ValueKey('customers_$_databaseGeneration'),
+        database: _database,
+        onDataChanged: _createImmediateBackup,
+      ),
+      2 => ProductsScreen(
+        key: ValueKey('products_$_databaseGeneration'),
+        database: _database,
+        onDataChanged: _createImmediateBackup,
+      ),
+      3 => AccountsScreen(
+        key: ValueKey('accounts_$_databaseGeneration'),
+        database: _database,
+      ),
+      _ => SettingsScreen(
+        key: ValueKey('settings_$_databaseGeneration'),
+        database: _database,
+        backupService: _backupService,
+        onDatabaseChanged: _replaceDatabase,
+      ),
+    };
+  }
 
   void _replaceDatabase(AppDatabase database) {
     setState(() {
@@ -106,12 +108,34 @@ class _MainShellState extends State<MainShell> {
     });
   }
 
-  Future<void> _createImmediateBackup() async {
-    await _automaticBackupService.runNow(_database);
+  Future<void> _createImmediateBackup() {
+    _dataChangeBackupTimer?.cancel();
+    _dataChangeBackupTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted) unawaited(_runDataChangeBackup());
+    });
+    return Future.value();
+  }
+
+  Future<void> _runDataChangeBackup() async {
+    final result = await _automaticBackupService.runNow(_database);
+    if (!mounted || result.status != AutomaticBackupStatus.alreadyRunning) {
+      return;
+    }
+    _dataChangeBackupTimer?.cancel();
+    _dataChangeBackupTimer = Timer(const Duration(seconds: 8), () {
+      if (mounted) unawaited(_runDataChangeBackup());
+    });
+  }
+
+  void _selectIndex(int index) {
+    if (_selectedIndex == index) return;
+    setState(() => _selectedIndex = index);
   }
 
   @override
   void dispose() {
+    _startupBackupTimer?.cancel();
+    _dataChangeBackupTimer?.cancel();
     _database.close();
     super.dispose();
   }
@@ -121,12 +145,14 @@ class _MainShellState extends State<MainShell> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final useRail = constraints.maxWidth >= 800;
-        final screens = _screens;
         final content = DecoratedBox(
           decoration: BoxDecoration(
             color: Theme.of(context).scaffoldBackgroundColor,
           ),
-          child: IndexedStack(index: _selectedIndex, children: screens),
+          child: RepaintBoundary(
+            key: ValueKey('screen_${_selectedIndex}_$_databaseGeneration'),
+            child: _buildSelectedScreen(),
+          ),
         );
 
         return Scaffold(
@@ -137,8 +163,7 @@ class _MainShellState extends State<MainShell> {
                     _ShellRail(
                       selectedIndex: _selectedIndex,
                       extended: constraints.maxWidth >= 1120,
-                      onSelected: (index) =>
-                          setState(() => _selectedIndex = index),
+                      onSelected: _selectIndex,
                     ),
                     Expanded(child: content),
                   ],
@@ -148,8 +173,7 @@ class _MainShellState extends State<MainShell> {
               ? null
               : NavigationBar(
                   selectedIndex: _selectedIndex,
-                  onDestinationSelected: (index) =>
-                      setState(() => _selectedIndex = index),
+                  onDestinationSelected: _selectIndex,
                   destinations: [
                     for (final destination in _destinations)
                       NavigationDestination(
@@ -343,8 +367,9 @@ class _RailItem extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: textTheme.labelLarge?.copyWith(
                         color: foreground,
-                        fontWeight:
-                            selected ? FontWeight.w900 : FontWeight.w600,
+                        fontWeight: selected
+                            ? FontWeight.w900
+                            : FontWeight.w600,
                       ),
                     ),
                   ),

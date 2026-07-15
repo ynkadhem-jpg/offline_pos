@@ -30,6 +30,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
   String _searchQuery = '';
   DateTime? _fromDate;
   DateTime? _toDate;
+  int _visibleSalesLimit = 50;
 
   @override
   void initState() {
@@ -63,6 +64,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
 
     setState(() {
       _fromDate = _dateOnly(selectedDate);
+      _visibleSalesLimit = 50;
       if (_toDate != null && _fromDate!.isAfter(_toDate!)) {
         _toDate = null;
       }
@@ -83,6 +85,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
 
     setState(() {
       _toDate = _dateOnly(selectedDate);
+      _visibleSalesLimit = 50;
       if (_fromDate != null && _toDate!.isBefore(_fromDate!)) {
         _fromDate = null;
       }
@@ -93,10 +96,23 @@ class _AccountsScreenState extends State<AccountsScreen> {
     setState(() {
       _fromDate = null;
       _toDate = null;
+      _visibleSalesLimit = 50;
     });
   }
 
-  DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
+  void _onSearchChanged(String value) {
+    setState(() {
+      _searchQuery = value;
+      _visibleSalesLimit = 50;
+    });
+  }
+
+  void _showMoreSales() {
+    setState(() => _visibleSalesLimit += 50);
+  }
+
+  DateTime _dateOnly(DateTime date) =>
+      DateTime(date.year, date.month, date.day);
 
   List<SalesReportRow> _filterSales(List<SalesReportRow> sales) {
     final query = _searchQuery.trim().toLowerCase();
@@ -106,17 +122,19 @@ class _AccountsScreenState extends State<AccountsScreen> {
         ? null
         : DateTime(to.year, to.month, to.day + 1);
 
-    return sales.where((sale) {
-      final matchesSearch =
-          query.isEmpty ||
-          sale.customerName.toLowerCase().contains(query) ||
-          sale.productName.toLowerCase().contains(query);
-      final saleDate = sale.startDate;
-      final matchesFrom = from == null || !saleDate.isBefore(from);
-      final matchesTo =
-          toExclusive == null || saleDate.isBefore(toExclusive);
-      return matchesSearch && matchesFrom && matchesTo;
-    }).toList(growable: false);
+    return sales
+        .where((sale) {
+          final matchesSearch =
+              query.isEmpty ||
+              sale.customerName.toLowerCase().contains(query) ||
+              sale.productName.toLowerCase().contains(query);
+          final saleDate = sale.startDate;
+          final matchesFrom = from == null || !saleDate.isBefore(from);
+          final matchesTo =
+              toExclusive == null || saleDate.isBefore(toExclusive);
+          return matchesSearch && matchesFrom && matchesTo;
+        })
+        .toList(growable: false);
   }
 
   Map<int, List<SalesReportRow>> _groupSales(List<SalesReportRow> sales) {
@@ -311,7 +329,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
           final compact = constraints.maxWidth < 760;
           final search = TextField(
             controller: _searchController,
-            onChanged: (value) => setState(() => _searchQuery = value),
+            onChanged: _onSearchChanged,
             textInputAction: TextInputAction.search,
             decoration: InputDecoration(
               hintText: 'ابحث باسم الزبون أو المنتج',
@@ -322,7 +340,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                       tooltip: 'مسح البحث',
                       onPressed: () {
                         _searchController.clear();
-                        setState(() => _searchQuery = '');
+                        _onSearchChanged('');
                       },
                       icon: const Icon(Icons.clear),
                     ),
@@ -410,7 +428,9 @@ class _AccountsScreenState extends State<AccountsScreen> {
           );
         }
 
-        final groups = _groupSales(filteredSales);
+        final visibleSales = filteredSales.take(_visibleSalesLimit).toList();
+        final groups = _groupSales(visibleSales);
+        final hasMoreSales = visibleSales.length < filteredSales.length;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -426,6 +446,18 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 ),
               ),
               for (final sale in entry.value) _SaleCard(sale: sale),
+            ],
+            if (hasMoreSales) ...[
+              const SizedBox(height: AppSpacing.md),
+              Center(
+                child: OutlinedButton.icon(
+                  onPressed: _showMoreSales,
+                  icon: const Icon(Icons.expand_more),
+                  label: Text(
+                    'عرض المزيد (${filteredSales.length - visibleSales.length})',
+                  ),
+                ),
+              ),
             ],
           ],
         );
@@ -709,10 +741,7 @@ class _SectionMessage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppPanel(
-      child: AppEmptyState(
-        icon: icon,
-        title: message,
-      ),
+      child: AppEmptyState(icon: icon, title: message),
     );
   }
 }

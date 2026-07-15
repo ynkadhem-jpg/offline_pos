@@ -36,36 +36,39 @@ class DashboardDao extends DatabaseAccessor<AppDatabase> {
     final start = DateTime(day.year, day.month, day.day);
     final end = start.add(const Duration(days: 1));
 
-    final query = select(attachedDatabase.installments).join([
-      innerJoin(
-        attachedDatabase.sales,
-        attachedDatabase.sales.id.equalsExp(
-          attachedDatabase.installments.saleId,
-        ),
-      ),
-      innerJoin(
-        attachedDatabase.customers,
-        attachedDatabase.customers.id.equalsExp(
-          attachedDatabase.sales.customerId,
-        ),
-      ),
-      innerJoin(
-        attachedDatabase.products,
-        attachedDatabase.products.id.equalsExp(
-          attachedDatabase.sales.productId,
-        ),
-      ),
-    ])
-      ..where(
-        attachedDatabase.installments.isPaid.equals(false) &
-            attachedDatabase.sales.isDeleted.equals(false) &
-            attachedDatabase.installments.dueDate.isBiggerOrEqualValue(start) &
-            attachedDatabase.installments.dueDate.isSmallerThanValue(end),
-      )
-      ..orderBy([
-        OrderingTerm.asc(attachedDatabase.installments.dueDate),
-        OrderingTerm.asc(attachedDatabase.installments.id),
-      ]);
+    final query =
+        select(attachedDatabase.installments).join([
+            innerJoin(
+              attachedDatabase.sales,
+              attachedDatabase.sales.id.equalsExp(
+                attachedDatabase.installments.saleId,
+              ),
+            ),
+            innerJoin(
+              attachedDatabase.customers,
+              attachedDatabase.customers.id.equalsExp(
+                attachedDatabase.sales.customerId,
+              ),
+            ),
+            innerJoin(
+              attachedDatabase.products,
+              attachedDatabase.products.id.equalsExp(
+                attachedDatabase.sales.productId,
+              ),
+            ),
+          ])
+          ..where(
+            attachedDatabase.installments.isPaid.equals(false) &
+                attachedDatabase.sales.isDeleted.equals(false) &
+                attachedDatabase.installments.dueDate.isBiggerOrEqualValue(
+                  start,
+                ) &
+                attachedDatabase.installments.dueDate.isSmallerThanValue(end),
+          )
+          ..orderBy([
+            OrderingTerm.asc(attachedDatabase.installments.dueDate),
+            OrderingTerm.asc(attachedDatabase.installments.id),
+          ]);
 
     return query.watch().map(
       (rows) => rows

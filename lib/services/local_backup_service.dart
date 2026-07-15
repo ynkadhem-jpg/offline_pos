@@ -109,7 +109,14 @@ class LocalBackupService {
     'payments',
   };
   static const _requiredColumns = {
-    'products': {'id', 'name', 'price', 'is_deleted', 'created_at', 'updated_at'},
+    'products': {
+      'id',
+      'name',
+      'price',
+      'is_deleted',
+      'created_at',
+      'updated_at',
+    },
     'customers': {'id', 'name', 'address', 'phone', 'is_deleted', 'created_at'},
     'sales': {
       'id',
@@ -136,13 +143,7 @@ class LocalBackupService {
       'total_paid',
       'is_paid',
     },
-    'payments': {
-      'id',
-      'installment_id',
-      'amount',
-      'payment_date',
-      'note',
-    },
+    'payments': {'id', 'installment_id', 'amount', 'payment_date', 'note'},
   };
 
   final DateTime Function() _clock;

@@ -53,8 +53,10 @@ void main() {
     final result = await service.runIfDue(database);
 
     expect(result.status, AutomaticBackupStatus.created);
-    expect(storage.backups.single.name,
-        'offline_pos_auto_backup_2026-07-14_123000.db');
+    expect(
+      storage.backups.single.name,
+      'offline_pos_auto_backup_2026-07-14_123000.db',
+    );
     expect(timestampStore.value, now);
     expect(storage.lastCopiedSize, greaterThan(0));
   });
@@ -82,50 +84,57 @@ void main() {
     expect(storage.backups, hasLength(2));
   });
 
-  test('newest stored file prevents duplication if timestamp write fails',
-      () async {
-    timestampStore.failWrites = true;
-    final first = await service.runIfDue(database);
-    expect(first.status, AutomaticBackupStatus.created);
-    expect(first.failure, isNotNull);
+  test(
+    'newest stored file prevents duplication if timestamp write fails',
+    () async {
+      timestampStore.failWrites = true;
+      final first = await service.runIfDue(database);
+      expect(first.status, AutomaticBackupStatus.created);
+      expect(first.failure, isNotNull);
 
-    timestampStore.failWrites = false;
-    now = now.add(const Duration(hours: 1));
-    final second = await service.runIfDue(database);
+      timestampStore.failWrites = false;
+      now = now.add(const Duration(hours: 1));
+      final second = await service.runIfDue(database);
 
-    expect(second.status, AutomaticBackupStatus.notDue);
-    expect(storage.backups, hasLength(1));
-  });
+      expect(second.status, AutomaticBackupStatus.notDue);
+      expect(storage.backups, hasLength(1));
+    },
+  );
 
-  test('retention keeps seven strict matches and ignores unrelated files',
-      () async {
-    for (var day = 1; day <= 9; day++) {
+  test(
+    'retention keeps seven strict matches and ignores unrelated files',
+    () async {
+      for (var day = 1; day <= 9; day++) {
+        storage.backups.add(
+          StoredAutomaticBackup(
+            identifier: 'owned-$day',
+            name:
+                'offline_pos_auto_backup_2026-07-${day.toString().padLeft(2, '0')}_120000.db',
+            modifiedAtUtc: DateTime.utc(2026, 7, day, 12),
+            size: day,
+          ),
+        );
+      }
       storage.backups.add(
         StoredAutomaticBackup(
-          identifier: 'owned-$day',
-          name: 'offline_pos_auto_backup_2026-07-${day.toString().padLeft(2, '0')}_120000.db',
-          modifiedAtUtc: DateTime.utc(2026, 7, day, 12),
-          size: day,
+          identifier: 'unrelated',
+          name: 'some_other_backup.db',
+          modifiedAtUtc: now,
+          size: 1,
         ),
       );
-    }
-    storage.backups.add(
-      StoredAutomaticBackup(
-        identifier: 'unrelated',
-        name: 'some_other_backup.db',
-        modifiedAtUtc: now,
-        size: 1,
-      ),
-    );
-    timestampStore.value = now;
+      timestampStore.value = now;
 
-    final result = await service.runIfDue(database);
+      final result = await service.runIfDue(database);
 
-    expect(result.status, AutomaticBackupStatus.notDue);
-    expect(storage.deletedIdentifiers, ['owned-2', 'owned-1']);
-    expect(storage.backups.any((backup) => backup.identifier == 'unrelated'),
-        isTrue);
-  });
+      expect(result.status, AutomaticBackupStatus.notDue);
+      expect(storage.deletedIdentifiers, ['owned-2', 'owned-1']);
+      expect(
+        storage.backups.any((backup) => backup.identifier == 'unrelated'),
+        isTrue,
+      );
+    },
+  );
 
   test('in-memory guard prevents two concurrent runs', () async {
     storage.storeGate = Completer<void>();

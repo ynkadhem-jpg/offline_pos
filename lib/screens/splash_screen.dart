@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../design_system/tokens/app_spacing.dart';
+import '../services/license_service.dart';
+import 'activation_screen.dart';
 import 'main_shell.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -21,11 +23,17 @@ class _SplashScreenState extends State<SplashScreen> {
     _timer = Timer(const Duration(milliseconds: 1600), _openApp);
   }
 
-  void _openApp() {
+  Future<void> _openApp() async {
+    final licenseService = LicenseService();
+    await licenseService.initialize();
+
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder<void>(
-        pageBuilder: (_, animation, secondaryAnimation) => const MainShell(),
+        pageBuilder: (_, animation, secondaryAnimation) =>
+            licenseService.isActivated
+            ? const MainShell()
+            : ActivationScreen(licenseService: licenseService),
         transitionDuration: const Duration(milliseconds: 450),
         transitionsBuilder: (_, animation, secondaryAnimation, child) =>
             FadeTransition(opacity: animation, child: child),
@@ -78,9 +86,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 const SizedBox(
                   width: AppSpacing.xl,
                   height: AppSpacing.xl,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 3,
-                  ),
+                  child: CircularProgressIndicator(strokeWidth: 3),
                 ),
               ],
             ),

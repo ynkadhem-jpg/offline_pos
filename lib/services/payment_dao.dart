@@ -31,9 +31,7 @@ class PaymentDao extends DatabaseAccessor<AppDatabase> {
         ..where((installment) => installment.id.equals(installmentId));
       final installment = await installmentQuery.getSingleOrNull();
       if (installment == null) {
-        throw StateError(
-          'Installment with ID $installmentId was not found.',
-        );
+        throw StateError('Installment with ID $installmentId was not found.');
       }
       if (installment.isPaid ||
           installment.totalPaid >= installment.actualDue) {
@@ -53,14 +51,14 @@ class PaymentDao extends DatabaseAccessor<AppDatabase> {
 
       final newTotalPaid = installment.totalPaid + amount;
       final affectedRows =
-          await (update(attachedDatabase.installments)
-                ..where((row) => row.id.equals(installmentId)))
-              .write(
-        InstallmentsCompanion(
-          totalPaid: Value(newTotalPaid),
-          isPaid: Value(newTotalPaid >= installment.actualDue),
-        ),
-      );
+          await (update(
+            attachedDatabase.installments,
+          )..where((row) => row.id.equals(installmentId))).write(
+            InstallmentsCompanion(
+              totalPaid: Value(newTotalPaid),
+              isPaid: Value(newTotalPaid >= installment.actualDue),
+            ),
+          );
       if (affectedRows != 1) {
         throw StateError(
           'Installment with ID $installmentId could not be updated.',

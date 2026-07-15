@@ -14,13 +14,11 @@ class CustomerSaleDetails {
   final Product product;
   final List<Installment> installments;
 
-  double get remainingAmount => installments.fold<double>(
-    0,
-    (total, installment) {
-      final remaining = installment.actualDue - installment.totalPaid;
-      return total + (remaining > 0 ? remaining : 0);
-    },
-  );
+  double get remainingAmount =>
+      installments.fold<double>(0, (total, installment) {
+        final remaining = installment.actualDue - installment.totalPaid;
+        return total + (remaining > 0 ? remaining : 0);
+      });
 }
 
 class SaleDao extends DatabaseAccessor<AppDatabase> {
@@ -97,10 +95,9 @@ class SaleDao extends DatabaseAccessor<AppDatabase> {
     );
 
     await transaction(() async {
-      final saleQuery = select(attachedDatabase.sales)
-        ..where(
-          (sale) => sale.id.equals(saleId) & sale.isDeleted.equals(false),
-        );
+      final saleQuery = select(
+        attachedDatabase.sales,
+      )..where((sale) => sale.id.equals(saleId) & sale.isDeleted.equals(false));
       final sale = await saleQuery.getSingleOrNull();
       if (sale == null) {
         throw StateError('Active sale with ID $saleId was not found.');
@@ -108,9 +105,7 @@ class SaleDao extends DatabaseAccessor<AppDatabase> {
 
       final installmentsQuery = select(attachedDatabase.installments)
         ..where((installment) => installment.saleId.equals(saleId))
-        ..orderBy([
-          (installment) => OrderingTerm.asc(installment.monthNumber),
-        ]);
+        ..orderBy([(installment) => OrderingTerm.asc(installment.monthNumber)]);
       final installments = await installmentsQuery.get();
 
       final installmentIds = installments
@@ -159,19 +154,19 @@ class SaleDao extends DatabaseAccessor<AppDatabase> {
       }
 
       final affectedRows =
-          await (update(attachedDatabase.sales)
-                ..where((sale) => sale.id.equals(saleId)))
-              .write(
-        SalesCompanion(
-          originalPrice: Value(originalPrice),
-          interestAmount: Value(interestAmount),
-          totalAmount: Value(calculation.totalAmount),
-          months: Value(months),
-          monthlyWithInterest: Value(calculation.monthlyWithInterest),
-          monthlyWithoutInterest: Value(calculation.monthlyWithoutInterest),
-          startDate: Value(startDate),
-        ),
-      );
+          await (update(
+            attachedDatabase.sales,
+          )..where((sale) => sale.id.equals(saleId))).write(
+            SalesCompanion(
+              originalPrice: Value(originalPrice),
+              interestAmount: Value(interestAmount),
+              totalAmount: Value(calculation.totalAmount),
+              months: Value(months),
+              monthlyWithInterest: Value(calculation.monthlyWithInterest),
+              monthlyWithoutInterest: Value(calculation.monthlyWithoutInterest),
+              startDate: Value(startDate),
+            ),
+          );
       if (affectedRows != 1) {
         throw StateError('Sale $saleId could not be updated.');
       }
@@ -182,15 +177,15 @@ class SaleDao extends DatabaseAccessor<AppDatabase> {
         }
 
         if (installment.monthNumber > months) {
-          await (delete(attachedDatabase.installments)
-                ..where((row) => row.id.equals(installment.id)))
-              .go();
+          await (delete(
+            attachedDatabase.installments,
+          )..where((row) => row.id.equals(installment.id))).go();
           continue;
         }
 
-        await (update(attachedDatabase.installments)
-              ..where((row) => row.id.equals(installment.id)))
-            .write(
+        await (update(
+          attachedDatabase.installments,
+        )..where((row) => row.id.equals(installment.id))).write(
           InstallmentsCompanion(
             dueDate: Value(
               _addCalendarMonths(startDate, installment.monthNumber),
@@ -214,10 +209,7 @@ class SaleDao extends DatabaseAccessor<AppDatabase> {
       ];
       if (missingInstallments.isNotEmpty) {
         await attachedDatabase.batch((batch) {
-          batch.insertAll(
-            attachedDatabase.installments,
-            missingInstallments,
-          );
+          batch.insertAll(attachedDatabase.installments, missingInstallments);
         });
       }
     });
@@ -226,11 +218,11 @@ class SaleDao extends DatabaseAccessor<AppDatabase> {
   Future<int> softDeleteSale(int saleId) async {
     _validateId(saleId, 'saleId');
 
-    final affectedRows = await (update(attachedDatabase.sales)
-          ..where(
-            (sale) => sale.id.equals(saleId) & sale.isDeleted.equals(false),
-          ))
-        .write(const SalesCompanion(isDeleted: Value(true)));
+    final affectedRows =
+        await (update(attachedDatabase.sales)..where(
+              (sale) => sale.id.equals(saleId) & sale.isDeleted.equals(false),
+            ))
+            .write(const SalesCompanion(isDeleted: Value(true)));
     if (affectedRows != 1) {
       throw StateError('Active sale with ID $saleId was not found.');
     }
@@ -240,11 +232,11 @@ class SaleDao extends DatabaseAccessor<AppDatabase> {
   Future<int> restoreSale(int saleId) async {
     _validateId(saleId, 'saleId');
 
-    final affectedRows = await (update(attachedDatabase.sales)
-          ..where(
-            (sale) => sale.id.equals(saleId) & sale.isDeleted.equals(true),
-          ))
-        .write(const SalesCompanion(isDeleted: Value(false)));
+    final affectedRows =
+        await (update(attachedDatabase.sales)..where(
+              (sale) => sale.id.equals(saleId) & sale.isDeleted.equals(true),
+            ))
+            .write(const SalesCompanion(isDeleted: Value(false)));
     if (affectedRows != 1) {
       throw StateError('Deleted sale with ID $saleId was not found.');
     }
@@ -257,8 +249,7 @@ class SaleDao extends DatabaseAccessor<AppDatabase> {
     final query = select(attachedDatabase.sales)
       ..where(
         (sale) =>
-            sale.customerId.equals(customerId) &
-            sale.isDeleted.equals(false),
+            sale.customerId.equals(customerId) & sale.isDeleted.equals(false),
       )
       ..orderBy([
         (sale) => OrderingTerm.desc(sale.startDate),
@@ -271,29 +262,30 @@ class SaleDao extends DatabaseAccessor<AppDatabase> {
   Stream<List<CustomerSaleDetails>> watchCustomerSales(int customerId) {
     _validateId(customerId, 'customerId');
 
-    final query = select(attachedDatabase.sales).join([
-      innerJoin(
-        attachedDatabase.products,
-        attachedDatabase.products.id.equalsExp(
-          attachedDatabase.sales.productId,
-        ),
-      ),
-      leftOuterJoin(
-        attachedDatabase.installments,
-        attachedDatabase.installments.saleId.equalsExp(
-          attachedDatabase.sales.id,
-        ),
-      ),
-    ])
-      ..where(
-        attachedDatabase.sales.customerId.equals(customerId) &
-            attachedDatabase.sales.isDeleted.equals(false),
-      )
-      ..orderBy([
-        OrderingTerm.desc(attachedDatabase.sales.startDate),
-        OrderingTerm.desc(attachedDatabase.sales.id),
-        OrderingTerm.asc(attachedDatabase.installments.monthNumber),
-      ]);
+    final query =
+        select(attachedDatabase.sales).join([
+            innerJoin(
+              attachedDatabase.products,
+              attachedDatabase.products.id.equalsExp(
+                attachedDatabase.sales.productId,
+              ),
+            ),
+            leftOuterJoin(
+              attachedDatabase.installments,
+              attachedDatabase.installments.saleId.equalsExp(
+                attachedDatabase.sales.id,
+              ),
+            ),
+          ])
+          ..where(
+            attachedDatabase.sales.customerId.equals(customerId) &
+                attachedDatabase.sales.isDeleted.equals(false),
+          )
+          ..orderBy([
+            OrderingTerm.desc(attachedDatabase.sales.startDate),
+            OrderingTerm.desc(attachedDatabase.sales.id),
+            OrderingTerm.asc(attachedDatabase.installments.monthNumber),
+          ]);
 
     return query.watch().map((rows) {
       final sales = <int, Sale>{};
@@ -305,9 +297,7 @@ class SaleDao extends DatabaseAccessor<AppDatabase> {
         sales[sale.id] = sale;
         products[sale.id] = row.readTable(attachedDatabase.products);
 
-        final installment = row.readTableOrNull(
-          attachedDatabase.installments,
-        );
+        final installment = row.readTableOrNull(attachedDatabase.installments);
         if (installment != null) {
           (installments[sale.id] ??= []).add(installment);
         }
@@ -348,11 +338,7 @@ class SaleDao extends DatabaseAccessor<AppDatabase> {
     final monthIndex = date.year * 12 + date.month - 1 + monthsToAdd;
     final targetYear = monthIndex ~/ 12;
     final targetMonth = monthIndex % 12 + 1;
-    final lastDayOfTargetMonth = DateTime(
-      targetYear,
-      targetMonth + 1,
-      0,
-    ).day;
+    final lastDayOfTargetMonth = DateTime(targetYear, targetMonth + 1, 0).day;
     final targetDay = date.day <= lastDayOfTargetMonth
         ? date.day
         : lastDayOfTargetMonth;
@@ -386,8 +372,7 @@ class SaleDao extends DatabaseAccessor<AppDatabase> {
     final query = select(attachedDatabase.customers)
       ..where(
         (customer) =>
-            customer.id.equals(customerId) &
-            customer.isDeleted.equals(false),
+            customer.id.equals(customerId) & customer.isDeleted.equals(false),
       );
     if (await query.getSingleOrNull() == null) {
       throw StateError('Active customer with ID $customerId was not found.');

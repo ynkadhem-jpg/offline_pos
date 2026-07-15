@@ -36,9 +36,7 @@ abstract final class InputThemeConfig {
         borderSide: BorderSide(color: colorScheme.error, width: 1.6),
       ),
       labelStyle: textTheme.bodyMedium?.copyWith(color: AppColors.inkMuted),
-      hintStyle: textTheme.bodyMedium?.copyWith(
-        color: AppColors.inkSoft,
-      ),
+      hintStyle: textTheme.bodyMedium?.copyWith(color: AppColors.inkSoft),
     );
   }
 }

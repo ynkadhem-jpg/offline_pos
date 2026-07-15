@@ -41,6 +41,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
   late final ProductDao _productDao;
   late final PaymentDao _paymentDao;
   late final SaleDao _saleDao;
+  late final Stream<List<Customer>> _customersStream;
   late final Stream<List<CustomerSummary>> _customerSummariesStream;
   late final TextEditingController _searchController;
 
@@ -56,6 +57,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
     _productDao = ProductDao(_db);
     _paymentDao = PaymentDao(_db);
     _saleDao = SaleDao(_db);
+    _customersStream = _customerDao.watchCustomers();
     _customerSummariesStream = _customerSummaryDao.watchCustomerSummaries();
     _searchController = TextEditingController();
   }
@@ -66,11 +68,17 @@ class _CustomersScreenState extends State<CustomersScreen> {
     super.dispose();
   }
 
-  Stream<List<Customer>> _customersStream() {
+  List<Customer> _filterCustomers(List<Customer> customers) {
     final query = _searchQuery.trim();
-    return query.isEmpty
-        ? _customerDao.watchCustomers()
-        : _customerDao.searchCustomers(query);
+    if (query.isEmpty) return customers;
+    final normalizedQuery = query.toLowerCase();
+    return customers
+        .where((customer) {
+          return customer.name.toLowerCase().contains(normalizedQuery) ||
+              customer.phone.toLowerCase().contains(normalizedQuery) ||
+              customer.address.toLowerCase().contains(normalizedQuery);
+        })
+        .toList(growable: false);
   }
 
   void _onSearchChanged(String value) {
@@ -268,7 +276,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
               ),
               Expanded(
                 child: StreamBuilder<List<Customer>>(
-                  stream: _customersStream(),
+                  stream: _customersStream,
                   builder: (context, customersSnapshot) {
                     if (customersSnapshot.hasError) {
                       return const _CustomersMessage(
@@ -281,7 +289,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
                       return const _CustomersMessage.loading();
                     }
 
-                    final customers = customersSnapshot.data ?? [];
+                    final allCustomers = customersSnapshot.data ?? [];
+                    final customers = _filterCustomers(allCustomers);
                     return StreamBuilder<List<CustomerSummary>>(
                       stream: _customerSummariesStream,
                       builder: (context, summariesSnapshot) {
@@ -289,7 +298,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
                           return const _CustomersMessage(
                             icon: Icons.error_outline,
                             title: 'حدث خطأ أثناء تحميل ملخصات الزبائن',
-                            description: 'البيانات الأساسية سليمة، لكن الملخص تعذر تحميله.',
+                            description:
+                                'البيانات الأساسية سليمة، لكن الملخص تعذر تحميله.',
                           );
                         }
                         if (!summariesSnapshot.hasData) {
@@ -310,7 +320,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             _CustomerOverview(
-                              totalCustomers: customers.length,
+                              totalCustomers: allCustomers.length,
                               visibleCustomers: visibleCustomers.length,
                             ),
                             const SizedBox(height: AppSpacing.sm),
@@ -318,8 +328,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                               searchController: _searchController,
                               paymentFilter: _paymentFilter,
                               onSearchChanged: _onSearchChanged,
-                              onPaymentFilterChanged:
-                                  _onPaymentFilterChanged,
+                              onPaymentFilterChanged: _onPaymentFilterChanged,
                             ),
                             const SizedBox(height: AppSpacing.md),
                             Expanded(
@@ -328,11 +337,11 @@ class _CustomersScreenState extends State<CustomersScreen> {
                                       icon: Icons.people_outline,
                                       title: _emptyMessage(
                                         hasActiveCustomers:
-                                            customers.isNotEmpty,
+                                            allCustomers.isNotEmpty,
                                       ),
                                       description:
                                           'يمكنك تعديل البحث أو تغيير الفلتر لعرض نتائج أخرى.',
-                                      action: customers.isEmpty
+                                      action: allCustomers.isEmpty
                                           ? FilledButton.icon(
                                               onPressed: _showAddCustomerForm,
                                               icon: const Icon(
@@ -348,9 +357,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                                       padding: EdgeInsets.zero,
                                       itemCount: visibleCustomers.length,
                                       separatorBuilder: (context, index) =>
-                                          const SizedBox(
-                                        height: AppSpacing.md,
-                                      ),
+                                          const SizedBox(height: AppSpacing.md),
                                       itemBuilder: (context, index) {
                                         final customer =
                                             visibleCustomers[index];
@@ -427,7 +434,9 @@ class _CustomerOverview extends StatelessWidget {
             ),
             const SizedBox(width: AppSpacing.sm),
             Text(
-              showVisibleCount ? '$visibleCustomers / $totalCustomers' : '$totalCustomers',
+              showVisibleCount
+                  ? '$visibleCustomers / $totalCustomers'
+                  : '$totalCustomers',
               style: textTheme.titleSmall?.copyWith(
                 color: AppColors.primary,
                 fontWeight: FontWeight.w900,
@@ -484,12 +493,10 @@ class _CustomerControls extends StatelessWidget {
               AppFilterPill(
                 label: 'الدافعون هذا الشهر',
                 icon: Icons.check_circle_outline,
-                selected:
-                    paymentFilter == CustomerPaymentFilter.paidThisMonth,
+                selected: paymentFilter == CustomerPaymentFilter.paidThisMonth,
                 tone: AppStatusTone.success,
-                onTap: () => onPaymentFilterChanged(
-                  CustomerPaymentFilter.paidThisMonth,
-                ),
+                onTap: () =>
+                    onPaymentFilterChanged(CustomerPaymentFilter.paidThisMonth),
               ),
               AppFilterPill(
                 label: 'غير الدافعين',
@@ -545,8 +552,8 @@ class _CustomerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final currency = NumberFormat.decimalPattern('en');
-    final canPay = summary.hasCurrentMonthInstallment &&
-        !summary.isCurrentMonthPaid;
+    final canPay =
+        summary.hasCurrentMonthInstallment && !summary.isCurrentMonthPaid;
 
     return AppPanel(
       padding: EdgeInsets.zero,
@@ -668,9 +675,9 @@ class _CustomerAvatar extends StatelessWidget {
         child: Text(
           initial,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: AppColors.accent,
-                fontWeight: FontWeight.w900,
-              ),
+            color: AppColors.accent,
+            fontWeight: FontWeight.w900,
+          ),
         ),
       ),
     );
@@ -772,9 +779,9 @@ class _CustomerAmount extends StatelessWidget {
                   value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: AppColors.ink,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelLarge?.copyWith(color: AppColors.ink),
                 ),
               ],
             ),
@@ -795,8 +802,8 @@ class _CustomerStatus extends StatelessWidget {
     final (label, tone, icon) = !summary.hasCurrentMonthInstallment
         ? ('لا يوجد قسط', AppStatusTone.neutral, Icons.info_outline)
         : summary.isCurrentMonthPaid
-            ? ('مدفوع', AppStatusTone.success, Icons.check_circle_outline)
-            : ('غير مدفوع', AppStatusTone.warning, Icons.error_outline);
+        ? ('مدفوع', AppStatusTone.success, Icons.check_circle_outline)
+        : ('غير مدفوع', AppStatusTone.warning, Icons.error_outline);
 
     return AppStatusChip(label: label, tone: tone, icon: icon);
   }
@@ -811,11 +818,11 @@ class _CustomersMessage extends StatelessWidget {
   }) : isLoading = false;
 
   const _CustomersMessage.loading()
-      : icon = Icons.people_outline,
-        title = '',
-        description = null,
-        action = null,
-        isLoading = true;
+    : icon = Icons.people_outline,
+      title = '',
+      description = null,
+      action = null,
+      isLoading = true;
 
   final IconData icon;
   final String title;

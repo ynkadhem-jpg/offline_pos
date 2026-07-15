@@ -8,9 +8,7 @@ import 'package:taqseet/services/local_backup_service.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  const pathProviderChannel = MethodChannel(
-    'plugins.flutter.io/path_provider',
-  );
+  const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
 
   late Directory temporaryDirectory;
   late AppDatabase database;
@@ -26,9 +24,7 @@ void main() {
           (_) async => temporaryDirectory.path,
         );
     database = AppDatabase();
-    service = LocalBackupService(
-      clock: () => DateTime(2026, 7, 14, 15, 30),
-    );
+    service = LocalBackupService(clock: () => DateTime(2026, 7, 14, 15, 30));
   });
 
   tearDown(() async {
@@ -42,14 +38,16 @@ void main() {
 
   Future<void> addProduct(String name) async {
     final now = DateTime(2026, 7, 14);
-    await database.into(database.products).insert(
-      ProductsCompanion.insert(
-        name: name,
-        price: 100,
-        createdAt: now,
-        updatedAt: now,
-      ),
-    );
+    await database
+        .into(database.products)
+        .insert(
+          ProductsCompanion.insert(
+            name: name,
+            price: 100,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
   }
 
   test('creates the required timestamped file name', () {

@@ -100,8 +100,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       backups.sort(
         (first, second) => second.modifiedAtUtc.compareTo(first.modifiedAtUtc),
       );
-      newestStoredAutomaticBackupUtc =
-          backups.isEmpty ? null : backups.first.modifiedAtUtc;
+      newestStoredAutomaticBackupUtc = backups.isEmpty
+          ? null
+          : backups.first.modifiedAtUtc;
     } catch (_) {
       // Some platforms do not expose the Android storage bridge.
     }
@@ -115,8 +116,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return const _LastBackupInfo.empty();
     }
 
-    final source = manualBackupUtc != null &&
-            manualBackupUtc.isAtSameMomentAs(latestUtc)
+    final source =
+        manualBackupUtc != null && manualBackupUtc.isAtSameMomentAs(latestUtc)
         ? _LastBackupSource.manual
         : _LastBackupSource.automatic;
     return _LastBackupInfo(timestampUtc: latestUtc, source: source);
@@ -445,8 +446,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const AppSectionHeader(
                         title: 'إدارة النسخ',
                         icon: Icons.backup_outlined,
-                        subtitle:
-                            'أنشئ نسخة مباشرة أو استعد آخر نسخة محفوظة.',
+                        subtitle: 'أنشئ نسخة مباشرة أو استعد آخر نسخة محفوظة.',
                       ),
                       const SizedBox(height: AppSpacing.lg),
                       LayoutBuilder(
@@ -521,9 +521,7 @@ enum _LastBackupSource { manual, automatic }
 class _LastBackupInfo {
   const _LastBackupInfo({required this.timestampUtc, required this.source});
 
-  const _LastBackupInfo.empty()
-      : timestampUtc = null,
-        source = null;
+  const _LastBackupInfo.empty() : timestampUtc = null, source = null;
 
   final DateTime? timestampUtc;
   final _LastBackupSource? source;
@@ -576,9 +574,7 @@ class _LastBackupCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                 ),
                 child: Icon(
-                  hasBackup
-                      ? Icons.cloud_done_outlined
-                      : Icons.backup_outlined,
+                  hasBackup ? Icons.cloud_done_outlined : Icons.backup_outlined,
                   color: Colors.white,
                   size: 30,
                 ),
@@ -591,19 +587,20 @@ class _LastBackupCard extends StatelessWidget {
                     Text(
                       'آخر نسخة احتياطية',
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color: Colors.white.withValues(alpha: 0.74),
-                          ),
+                        color: Colors.white.withValues(alpha: 0.74),
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Text(
                       isLoading
                           ? 'جاري التحقق...'
                           : hasBackup
-                              ? _formatTimestamp(timestamp!)
-                              : 'لا توجد نسخة مسجلة',
+                          ? _formatTimestamp(timestamp)
+                          : 'لا توجد نسخة مسجلة',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.w900,
                           ),
@@ -612,17 +609,15 @@ class _LastBackupCard extends StatelessWidget {
                     Text(
                       sourceText,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.white.withValues(alpha: 0.70),
-                          ),
+                        color: Colors.white.withValues(alpha: 0.70),
+                      ),
                     ),
                   ],
                 ),
               ),
               AppStatusChip(
                 label: hasBackup ? 'محمي' : 'بانتظار نسخة',
-                icon: hasBackup
-                    ? Icons.verified_outlined
-                    : Icons.info_outline,
+                icon: hasBackup ? Icons.verified_outlined : Icons.info_outline,
                 tone: hasBackup ? AppStatusTone.success : AppStatusTone.accent,
               ),
             ],

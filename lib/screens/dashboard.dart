@@ -60,7 +60,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   const AppPageHeader(
                     title: 'لوحة التحكم',
-                    subtitle: 'مركز مالي سريع يوضح التحصيل، الربح، وحركة البيع.',
+                    subtitle:
+                        'مركز مالي سريع يوضح التحصيل، الربح، وحركة البيع.',
                   ),
                   _buildSummaryArea(),
                   const SizedBox(height: AppSpacing.lg),
@@ -420,11 +421,8 @@ class _DashboardGrid extends StatelessWidget {
   final List<Widget> children;
 
   @override
-  Widget build(BuildContext context) => _ResponsiveWrap(
-    wideColumns: 3,
-    mediumColumns: 2,
-    children: children,
-  );
+  Widget build(BuildContext context) =>
+      _ResponsiveWrap(wideColumns: 3, mediumColumns: 2, children: children);
 }
 
 class _ResponsiveWrap extends StatelessWidget {
@@ -574,9 +572,9 @@ class _SalesStatusCard extends StatelessWidget {
                               children: [
                                 Text(
                                   '${sales.length}',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineSmall,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.headlineSmall,
                                 ),
                                 Text(
                                   'مبيعات',
@@ -688,7 +686,9 @@ class _LegendRow extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: AppSpacing.sm),
-        Expanded(child: Text(label, style: Theme.of(context).textTheme.bodySmall)),
+        Expanded(
+          child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+        ),
         Text(value, style: Theme.of(context).textTheme.labelLarge),
       ],
     );
@@ -713,11 +713,8 @@ class _SectionError extends StatelessWidget {
   final String message;
 
   @override
-  Widget build(BuildContext context) => AppEmptyState(
-    icon: Icons.error_outline,
-    title: message,
-    compact: true,
-  );
+  Widget build(BuildContext context) =>
+      AppEmptyState(icon: Icons.error_outline, title: message, compact: true);
 }
 
 class _MonthlySalesPoint {
@@ -754,7 +751,9 @@ class _SalesLinePainter extends CustomPainter {
       textAlign: TextAlign.center,
     );
     final chartRect = Rect.fromLTWH(8, 8, size.width - 16, size.height - 42);
-    final maxValue = points.map((point) => point.value).fold<double>(0, math.max);
+    final maxValue = points
+        .map((point) => point.value)
+        .fold<double>(0, math.max);
     final safeMax = maxValue == 0 ? 1.0 : maxValue;
 
     final gridPaint = Paint()
@@ -774,9 +773,11 @@ class _SalesLinePainter extends CustomPainter {
     final dots = <Offset>[];
 
     for (var i = 0; i < points.length; i++) {
-      final x = chartRect.left +
+      final x =
+          chartRect.left +
           (points.length == 1 ? 0 : chartRect.width * i / (points.length - 1));
-      final y = chartRect.bottom - chartRect.height * (points[i].value / safeMax);
+      final y =
+          chartRect.bottom - chartRect.height * (points[i].value / safeMax);
       final point = Offset(x, y);
       dots.add(point);
       if (i == 0) {
@@ -822,7 +823,8 @@ class _SalesLinePainter extends CustomPainter {
     }
 
     for (var i = 0; i < points.length; i++) {
-      final x = chartRect.left +
+      final x =
+          chartRect.left +
           (points.length == 1 ? 0 : chartRect.width * i / (points.length - 1));
       textPainter.text = TextSpan(
         text: points[i].label,

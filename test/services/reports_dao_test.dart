@@ -9,9 +9,7 @@ import 'package:taqseet/services/reports_dao.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  const pathProviderChannel = MethodChannel(
-    'plugins.flutter.io/path_provider',
-  );
+  const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
 
   late Directory temporaryDirectory;
   late AppDatabase database;
@@ -30,14 +28,16 @@ void main() {
 
     database = AppDatabase();
     reportsDao = ReportsDao(database);
-    customerId = await database.into(database.customers).insert(
-      CustomersCompanion.insert(
-        name: 'Test customer',
-        address: 'Test address',
-        phone: '0000000000',
-        createdAt: DateTime(2026, 1, 1),
-      ),
-    );
+    customerId = await database
+        .into(database.customers)
+        .insert(
+          CustomersCompanion.insert(
+            name: 'Test customer',
+            address: 'Test address',
+            phone: '0000000000',
+            createdAt: DateTime(2026, 1, 1),
+          ),
+        );
   });
 
   tearDown(() async {
@@ -49,15 +49,17 @@ void main() {
 
   Future<int> addProduct(String name, {bool isDeleted = false}) {
     final now = DateTime(2026, 1, 1);
-    return database.into(database.products).insert(
-      ProductsCompanion.insert(
-        name: name,
-        price: 100,
-        isDeleted: Value(isDeleted),
-        createdAt: now,
-        updatedAt: now,
-      ),
-    );
+    return database
+        .into(database.products)
+        .insert(
+          ProductsCompanion.insert(
+            name: name,
+            price: 100,
+            isDeleted: Value(isDeleted),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
   }
 
   Future<int> addSale({
@@ -67,21 +69,23 @@ void main() {
     bool isDeleted = false,
   }) {
     final totalAmount = originalPrice + interestAmount;
-    return database.into(database.sales).insert(
-      SalesCompanion.insert(
-        customerId: customerId,
-        productId: productId,
-        originalPrice: originalPrice,
-        interestAmount: interestAmount,
-        totalAmount: totalAmount,
-        months: 1,
-        monthlyWithInterest: totalAmount,
-        monthlyWithoutInterest: originalPrice,
-        startDate: DateTime(2026, 1, 1),
-        isDeleted: Value(isDeleted),
-        createdAt: DateTime(2026, 1, 1),
-      ),
-    );
+    return database
+        .into(database.sales)
+        .insert(
+          SalesCompanion.insert(
+            customerId: customerId,
+            productId: productId,
+            originalPrice: originalPrice,
+            interestAmount: interestAmount,
+            totalAmount: totalAmount,
+            months: 1,
+            monthlyWithInterest: totalAmount,
+            monthlyWithoutInterest: originalPrice,
+            startDate: DateTime(2026, 1, 1),
+            isDeleted: Value(isDeleted),
+            createdAt: DateTime(2026, 1, 1),
+          ),
+        );
   }
 
   Future<int> addInstallment({
@@ -90,18 +94,20 @@ void main() {
     double totalPaid = 0,
     bool isPaid = false,
   }) {
-    return database.into(database.installments).insert(
-      InstallmentsCompanion.insert(
-        saleId: saleId,
-        monthNumber: 1,
-        dueDate: DateTime(2026, 2, 1),
-        baseAmount: actualDue,
-        carriedBalance: 0,
-        actualDue: actualDue,
-        totalPaid: totalPaid,
-        isPaid: Value(isPaid),
-      ),
-    );
+    return database
+        .into(database.installments)
+        .insert(
+          InstallmentsCompanion.insert(
+            saleId: saleId,
+            monthNumber: 1,
+            dueDate: DateTime(2026, 2, 1),
+            baseAmount: actualDue,
+            carriedBalance: 0,
+            actualDue: actualDue,
+            totalPaid: totalPaid,
+            isPaid: Value(isPaid),
+          ),
+        );
   }
 
   test('empty database returns zero totals and no top products', () async {
@@ -127,18 +133,20 @@ void main() {
     expect(summary.totalProfit, closeTo(0, 1e-10));
   });
 
-  test('partial payment reduces remaining and recognizes interest proportionally',
-      () async {
-    final productId = await addProduct('Product');
-    final saleId = await addSale(productId: productId);
-    await addInstallment(saleId: saleId, actualDue: 100, totalPaid: 40);
+  test(
+    'partial payment reduces remaining and recognizes interest proportionally',
+    () async {
+      final productId = await addProduct('Product');
+      final saleId = await addSale(productId: productId);
+      await addInstallment(saleId: saleId, actualDue: 100, totalPaid: 40);
 
-    final summary = await reportsDao.watchSummary().first;
+      final summary = await reportsDao.watchSummary().first;
 
-    expect(summary.remainingBalance, closeTo(60, 1e-10));
-    expect(summary.totalCollected, closeTo(40, 1e-10));
-    expect(summary.totalProfit, closeTo(8, 1e-10));
-  });
+      expect(summary.remainingBalance, closeTo(60, 1e-10));
+      expect(summary.totalCollected, closeTo(40, 1e-10));
+      expect(summary.totalProfit, closeTo(8, 1e-10));
+    },
+  );
 
   test('full payment recognizes full proportional interest', () async {
     final productId = await addProduct('Product');

@@ -236,8 +236,7 @@ class _CustomerFormDialogState extends State<CustomerFormDialog> {
                                 const SizedBox(width: AppSpacing.md),
                                 Expanded(
                                   child: FilledButton.icon(
-                                    onPressed:
-                                        _isSubmitting ? null : _submit,
+                                    onPressed: _isSubmitting ? null : _submit,
                                     icon: _isSubmitting
                                         ? const SizedBox.square(
                                             dimension: 18,

@@ -169,7 +169,7 @@ class AppHeroCard extends StatelessWidget {
                     foreground: Colors.white,
                   ),
                   const Spacer(),
-                  if (action != null) action!,
+                  ?action,
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
@@ -319,9 +319,9 @@ class AppStatusChip extends StatelessWidget {
             ],
             Text(
               label,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: colors.foreground,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(color: colors.foreground),
             ),
           ],
         ),
@@ -361,12 +361,10 @@ class AppFilterPill extends StatelessWidget {
       label: Text(label),
       selectedColor: colors.background,
       backgroundColor: AppColors.surfaceMuted,
-      side: BorderSide(
-        color: selected ? colors.foreground : AppColors.border,
-      ),
+      side: BorderSide(color: selected ? colors.foreground : AppColors.border),
       labelStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: selected ? colors.foreground : AppColors.inkMuted,
-          ),
+        color: selected ? colors.foreground : AppColors.inkMuted,
+      ),
     );
   }
 }
@@ -392,10 +390,10 @@ class AppResponsiveWrap extends StatelessWidget {
         final columns = constraints.maxWidth >= 1100
             ? wideColumns
             : constraints.maxWidth >= 700
-                ? mediumColumns
-                : 1;
-        final width = (constraints.maxWidth - spacing * (columns - 1)) /
-            columns;
+            ? mediumColumns
+            : 1;
+        final width =
+            (constraints.maxWidth - spacing * (columns - 1)) / columns;
         return Wrap(
           spacing: spacing,
           runSpacing: spacing,
@@ -454,10 +452,7 @@ class AppSectionHeader extends StatelessWidget {
             ],
           ),
         ),
-        if (action != null) ...[
-          const SizedBox(width: AppSpacing.sm),
-          action!,
-        ],
+        if (action != null) ...[const SizedBox(width: AppSpacing.sm), action!],
       ],
     );
   }

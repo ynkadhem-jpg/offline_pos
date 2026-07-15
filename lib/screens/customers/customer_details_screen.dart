@@ -214,10 +214,7 @@ class _CustomerHero extends StatelessWidget {
                   spacing: AppSpacing.lg,
                   runSpacing: AppSpacing.sm,
                   children: [
-                    _MetaItem(
-                      icon: Icons.phone_outlined,
-                      text: customer.phone,
-                    ),
+                    _MetaItem(icon: Icons.phone_outlined, text: customer.phone),
                     _MetaItem(
                       icon: Icons.location_on_outlined,
                       text: customer.address,
@@ -252,9 +249,7 @@ class _DetailsOverview extends StatelessWidget {
       0,
       (sum, details) => sum + details.remainingAmount,
     );
-    final installments = [
-      for (final details in sales) ...details.installments,
-    ];
+    final installments = [for (final details in sales) ...details.installments];
     final paidInstallments = installments.where(_isPaid).length;
     final unpaidInstallments = installments.length - paidInstallments;
 
@@ -499,10 +494,7 @@ class _InstallmentList extends StatelessWidget {
     return Column(
       children: [
         for (var index = 0; index < installments.length; index++) ...[
-          _InstallmentRow(
-            installment: installments[index],
-            onPay: onPay,
-          ),
+          _InstallmentRow(installment: installments[index], onPay: onPay),
           if (index != installments.length - 1)
             const SizedBox(height: AppSpacing.sm),
         ],
@@ -526,13 +518,13 @@ class _InstallmentRow extends StatelessWidget {
     final tone = paid
         ? AppStatusTone.success
         : overdueDays > 0
-            ? AppStatusTone.warning
-            : AppStatusTone.info;
+        ? AppStatusTone.warning
+        : AppStatusTone.info;
     final label = paid
         ? 'مدفوع'
         : overdueDays > 0
-            ? 'متأخر $overdueDays يوم'
-            : 'مستحق';
+        ? 'متأخر $overdueDays يوم'
+        : 'مستحق';
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.rg),

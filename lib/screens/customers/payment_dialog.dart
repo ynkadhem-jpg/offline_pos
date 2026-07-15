@@ -52,9 +52,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
   }
 
   double? get _amount {
-    return double.tryParse(
-      _amountController.text.trim().replaceAll('٫', '.'),
-    );
+    return double.tryParse(_amountController.text.trim().replaceAll('٫', '.'));
   }
 
   String? get _validationError {
@@ -221,9 +219,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
               OutlinedButton.icon(
                 onPressed: _isSubmitting ? null : _selectPaymentDate,
                 icon: const Icon(Icons.calendar_today_outlined),
-                label: Text(
-                  'تاريخ الدفعة: ${_formatDate(_paymentDate)}',
-                ),
+                label: Text('تاريخ الدفعة: ${_formatDate(_paymentDate)}'),
               ),
               const SizedBox(height: AppSpacing.fieldGap),
               TextField(

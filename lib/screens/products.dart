@@ -31,6 +31,7 @@ class ProductsScreen extends StatefulWidget {
 class _ProductsScreenState extends State<ProductsScreen> {
   late final AppDatabase _db;
   late final ProductDao _productDao;
+  late final Stream<List<Product>> _productsStream;
   late final TextEditingController _searchController;
 
   String _searchQuery = '';
@@ -42,6 +43,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
     super.initState();
     _db = widget.database;
     _productDao = ProductDao(_db);
+    _productsStream = _productDao.watchActiveProducts();
     _searchController = TextEditingController();
   }
 
@@ -49,10 +51,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  Stream<List<Product>> _productsStream() {
-    return _productDao.watchActiveProducts();
   }
 
   List<Product> _filterProducts(List<Product> products) {
@@ -201,7 +199,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
               ),
               Expanded(
                 child: StreamBuilder<List<Product>>(
-                  stream: _productsStream(),
+                  stream: _productsStream,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const _ProductsLoadingState();
@@ -219,9 +217,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     );
                     return Column(
                       children: [
-                        _ProductOverview(
-                          totalProducts: allProducts.length,
-                        ),
+                        _ProductOverview(totalProducts: allProducts.length),
                         const SizedBox(height: AppSpacing.md),
                         _ProductControls(
                           searchController: _searchController,
@@ -246,11 +242,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
                               : GridView.builder(
                                   gridDelegate:
                                       const SliverGridDelegateWithMaxCrossAxisExtent(
-                                    maxCrossAxisExtent: 420,
-                                    mainAxisExtent: 196,
-                                    crossAxisSpacing: AppSpacing.md,
-                                    mainAxisSpacing: AppSpacing.md,
-                                  ),
+                                        maxCrossAxisExtent: 420,
+                                        mainAxisExtent: 196,
+                                        crossAxisSpacing: AppSpacing.md,
+                                        mainAxisSpacing: AppSpacing.md,
+                                      ),
                                   itemCount: products.length,
                                   itemBuilder: (context, index) {
                                     final product = products[index];
@@ -307,15 +303,10 @@ class _ProductDeleteDialog extends StatelessWidget {
               color: AppColors.errorSoft,
               borderRadius: BorderRadius.circular(AppRadius.lg),
             ),
-            child: const Icon(
-              Icons.delete_outline,
-              color: AppColors.error,
-            ),
+            child: const Icon(Icons.delete_outline, color: AppColors.error),
           ),
           const SizedBox(width: AppSpacing.rg),
-          Expanded(
-            child: Text('حذف المنتج؟', style: textTheme.titleLarge),
-          ),
+          Expanded(child: Text('حذف المنتج؟', style: textTheme.titleLarge)),
         ],
       ),
       content: Text(
@@ -342,9 +333,7 @@ class _ProductDeleteDialog extends StatelessWidget {
 }
 
 class _ProductOverview extends StatelessWidget {
-  const _ProductOverview({
-    required this.totalProducts,
-  });
+  const _ProductOverview({required this.totalProducts});
 
   final int totalProducts;
 
@@ -428,9 +417,7 @@ class _ProductControls extends StatelessWidget {
           final sort = DropdownButtonFormField<ProductSortOption>(
             initialValue: sortOption,
             isExpanded: true,
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.sort),
-            ),
+            decoration: const InputDecoration(prefixIcon: Icon(Icons.sort)),
             items: const [
               DropdownMenuItem(
                 value: ProductSortOption.nameAsc,
@@ -756,7 +743,8 @@ class _ProductsMessage extends StatelessWidget {
         icon: Icons.inventory_2_outlined,
         title: message,
         description:
-            description ?? 'أضف المنتجات التي تبيعها حتى تظهر في عمليات التقسيط.',
+            description ??
+            'أضف المنتجات التي تبيعها حتى تظهر في عمليات التقسيط.',
         action: onAddProduct == null
             ? null
             : FilledButton.tonalIcon(

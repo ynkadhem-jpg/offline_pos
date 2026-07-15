@@ -9,9 +9,7 @@ import 'package:taqseet/services/sales_report_dao.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  const pathProviderChannel = MethodChannel(
-    'plugins.flutter.io/path_provider',
-  );
+  const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
 
   late Directory temporaryDirectory;
   late AppDatabase database;
@@ -39,61 +37,69 @@ void main() {
 
   test('joins active sales and preserves referenced deleted names', () async {
     final now = DateTime(2026, 7, 1);
-    final customerId = await database.into(database.customers).insert(
-      CustomersCompanion.insert(
-        name: 'Deleted customer',
-        address: 'Address',
-        phone: '000',
-        isDeleted: const Value(true),
-        createdAt: now,
-      ),
-    );
-    final productId = await database.into(database.products).insert(
-      ProductsCompanion.insert(
-        name: 'Deleted product',
-        price: 100,
-        isDeleted: const Value(true),
-        createdAt: now,
-        updatedAt: now,
-      ),
-    );
+    final customerId = await database
+        .into(database.customers)
+        .insert(
+          CustomersCompanion.insert(
+            name: 'Deleted customer',
+            address: 'Address',
+            phone: '000',
+            isDeleted: const Value(true),
+            createdAt: now,
+          ),
+        );
+    final productId = await database
+        .into(database.products)
+        .insert(
+          ProductsCompanion.insert(
+            name: 'Deleted product',
+            price: 100,
+            isDeleted: const Value(true),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
 
     Future<int> insertSale({
       required DateTime startDate,
       bool isDeleted = false,
     }) {
-      return database.into(database.sales).insert(
-        SalesCompanion.insert(
-          customerId: customerId,
-          productId: productId,
-          originalPrice: 80,
-          interestAmount: 20,
-          totalAmount: 100,
-          months: 1,
-          monthlyWithInterest: 100,
-          monthlyWithoutInterest: 80,
-          startDate: startDate,
-          isDeleted: Value(isDeleted),
-          createdAt: now,
-        ),
-      );
+      return database
+          .into(database.sales)
+          .insert(
+            SalesCompanion.insert(
+              customerId: customerId,
+              productId: productId,
+              originalPrice: 80,
+              interestAmount: 20,
+              totalAmount: 100,
+              months: 1,
+              monthlyWithInterest: 100,
+              monthlyWithoutInterest: 80,
+              startDate: startDate,
+              isDeleted: Value(isDeleted),
+              createdAt: now,
+            ),
+          );
     }
 
     await insertSale(startDate: DateTime(2026, 6, 1));
     final paidSaleId = await insertSale(startDate: DateTime(2026, 7, 1));
     await insertSale(startDate: DateTime(2026, 8, 1), isDeleted: true);
-    await database.into(database.installments).insert(
-      InstallmentsCompanion.insert(
-        saleId: paidSaleId,
-        monthNumber: 1,
-        dueDate: DateTime(2026, 8, 1),
-        baseAmount: 100,
-        carriedBalance: 0,
-        actualDue: 100,
-        totalPaid: 100,
-        isPaid: const Value(true),
-      ),
-    );
+    await database
+        .into(database.installments)
+        .insert(
+          InstallmentsCompanion.insert(
+            saleId: paidSaleId,
+            monthNumber: 1,
+            dueDate: DateTime(2026, 8, 1),
+            baseAmount: 100,
+            carriedBalance: 0,
+            actualDue: 100,
+            totalPaid: 100,
+            isPaid: const Value(true),
+          ),
+        );
 
     final rows = await dao.watchActiveSales().first;
 

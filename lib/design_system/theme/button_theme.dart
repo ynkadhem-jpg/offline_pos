@@ -22,9 +22,7 @@ abstract final class ButtonThemeConfig {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
         ),
-        textStyle: textTheme.labelLarge?.copyWith(
-          fontWeight: FontWeight.w800,
-        ),
+        textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
       ),
     );
   }
@@ -45,9 +43,7 @@ abstract final class ButtonThemeConfig {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
         ),
-        textStyle: textTheme.labelLarge?.copyWith(
-          fontWeight: FontWeight.w800,
-        ),
+        textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
       ),
     );
   }
@@ -68,9 +64,7 @@ abstract final class ButtonThemeConfig {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
         ),
-        textStyle: textTheme.labelLarge?.copyWith(
-          fontWeight: FontWeight.w800,
-        ),
+        textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
       ),
     );
   }
@@ -90,9 +84,7 @@ abstract final class ButtonThemeConfig {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
         ),
-        textStyle: textTheme.labelLarge?.copyWith(
-          fontWeight: FontWeight.w800,
-        ),
+        textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
       ),
     );
   }

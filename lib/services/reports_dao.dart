@@ -48,10 +48,7 @@ class ReportsDao extends DatabaseAccessor<AppDatabase> {
   Stream<ReportSummary> watchSummary() {
     final query = customSelect(
       _summaryQuery,
-      readsFrom: {
-        attachedDatabase.sales,
-        attachedDatabase.installments,
-      },
+      readsFrom: {attachedDatabase.sales, attachedDatabase.installments},
     );
 
     return query.watchSingle().map(
@@ -68,10 +65,7 @@ class ReportsDao extends DatabaseAccessor<AppDatabase> {
   Stream<List<TopSellingProduct>> watchTopSellingProducts() {
     final query = customSelect(
       _topSellingProductsQuery,
-      readsFrom: {
-        attachedDatabase.sales,
-        attachedDatabase.products,
-      },
+      readsFrom: {attachedDatabase.sales, attachedDatabase.products},
     );
 
     return query.watch().map(

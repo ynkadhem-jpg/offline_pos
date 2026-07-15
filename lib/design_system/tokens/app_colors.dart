@@ -36,19 +36,20 @@ abstract final class AppColors {
   static const Color chartPurple = Color(0xFF8B5CF6);
   static const Color chartAmber = Color(0xFFF59E0B);
 
-  static final ColorScheme lightScheme = ColorScheme.fromSeed(
-    seedColor: primary,
-    brightness: Brightness.light,
-    primary: primary,
-    tertiary: accent,
-    surface: surfacePage,
-    error: error,
-  ).copyWith(
-    onPrimary: Colors.white,
-    onTertiary: Colors.white,
-    onSurface: ink,
-    onSurfaceVariant: inkMuted,
-    outline: borderStrong,
-    outlineVariant: border,
-  );
+  static final ColorScheme lightScheme =
+      ColorScheme.fromSeed(
+        seedColor: primary,
+        brightness: Brightness.light,
+        primary: primary,
+        tertiary: accent,
+        surface: surfacePage,
+        error: error,
+      ).copyWith(
+        onPrimary: Colors.white,
+        onTertiary: Colors.white,
+        onSurface: ink,
+        onSurfaceVariant: inkMuted,
+        outline: borderStrong,
+        outlineVariant: border,
+      );
 }

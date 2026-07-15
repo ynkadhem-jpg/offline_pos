@@ -30,19 +30,17 @@ abstract interface class AutomaticBackupStorage {
 class AndroidAutomaticBackupStorage implements AutomaticBackupStorage {
   const AndroidAutomaticBackupStorage();
 
-  static const _channel = MethodChannel(
-    'offline_pos/automatic_backup_storage',
-  );
+  static const _channel = MethodChannel('offline_pos/automatic_backup_storage');
 
   @override
   Future<StoredAutomaticBackup> storeFile({
     required String sourcePath,
     required String fileName,
   }) async {
-    final value = await _channel.invokeMapMethod<String, Object?>(
-      'storeFile',
-      {'sourcePath': sourcePath, 'fileName': fileName},
-    );
+    final value = await _channel.invokeMapMethod<String, Object?>('storeFile', {
+      'sourcePath': sourcePath,
+      'fileName': fileName,
+    });
     if (value == null) {
       throw PlatformException(
         code: 'store_failed',
@@ -64,10 +62,10 @@ class AndroidAutomaticBackupStorage implements AutomaticBackupStorage {
 
   @override
   Future<String> copyBackupToCache(StoredAutomaticBackup backup) async {
-    final path = await _channel.invokeMethod<String>(
-      'copyBackupToCache',
-      {'identifier': backup.identifier, 'fileName': backup.name},
-    );
+    final path = await _channel.invokeMethod<String>('copyBackupToCache', {
+      'identifier': backup.identifier,
+      'fileName': backup.name,
+    });
     if (path == null || path.isEmpty) {
       throw PlatformException(
         code: 'copy_failed',
@@ -79,10 +77,10 @@ class AndroidAutomaticBackupStorage implements AutomaticBackupStorage {
 
   @override
   Future<void> deleteBackup(StoredAutomaticBackup backup) {
-    return _channel.invokeMethod<void>(
-      'deleteBackup',
-      {'identifier': backup.identifier, 'fileName': backup.name},
-    );
+    return _channel.invokeMethod<void>('deleteBackup', {
+      'identifier': backup.identifier,
+      'fileName': backup.name,
+    });
   }
 
   StoredAutomaticBackup _fromMap(Map<Object?, Object?> value) {
