@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -9,11 +11,13 @@ class PaymentDialog extends StatefulWidget {
   const PaymentDialog({
     required this.installment,
     required this.paymentDao,
+    this.onPaymentRecorded,
     super.key,
   });
 
   final Installment installment;
   final PaymentDao paymentDao;
+  final Future<void> Function()? onPaymentRecorded;
 
   @override
   State<PaymentDialog> createState() => _PaymentDialogState();
@@ -115,6 +119,10 @@ class _PaymentDialogState extends State<PaymentDialog> {
             ? null
             : _noteController.text.trim(),
       );
+      final onPaymentRecorded = widget.onPaymentRecorded;
+      if (onPaymentRecorded != null) {
+        unawaited(onPaymentRecorded());
+      }
       if (!context.mounted) {
         return;
       }

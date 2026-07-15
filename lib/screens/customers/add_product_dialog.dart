@@ -198,7 +198,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
       if (!context.mounted) {
         return;
       }
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(true);
     } catch (_) {
       if (!context.mounted) {
         return;
@@ -223,6 +223,16 @@ class _AddProductDialogState extends State<AddProductDialog> {
     final calculation = _calculation;
 
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.lg,
+      ),
+      contentPadding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.sm,
+      ),
       title: const Text('إضافة منتج'),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: AppSpacing.xxl * 10),
@@ -253,30 +263,34 @@ class _AddProductDialogState extends State<AddProductDialog> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  DropdownButtonFormField<int>(
-                    initialValue: products.any(
-                      (product) => product.id == _selectedProductId,
-                    )
+                  DropdownMenu<int>(
+                    key: ValueKey(_selectedProductId),
+                    enabled: !_isSubmitting,
+                    initialSelection:
+                        products.any(
+                          (product) => product.id == _selectedProductId,
+                        )
                         ? _selectedProductId
                         : null,
-                    decoration: const InputDecoration(
-                      labelText: 'المنتج',
-                      prefixIcon: Icon(Icons.inventory_2_outlined),
-                    ),
-                    items: [
+                    expandedInsets: EdgeInsets.zero,
+                    menuHeight: 320,
+                    enableFilter: true,
+                    enableSearch: true,
+                    requestFocusOnTap: true,
+                    leadingIcon: const Icon(Icons.inventory_2_outlined),
+                    label: const Text('المنتج'),
+                    hintText: 'ابحث باسم المنتج',
+                    helperText: 'اكتب للبحث داخل المنتجات المتاحة',
+                    dropdownMenuEntries: [
                       for (final product in products)
-                        DropdownMenuItem(
+                        DropdownMenuEntry<int>(
                           value: product.id,
-                          child: Text(
-                            '${product.name} — '
-                            '${currency.format(product.price)} د.ع',
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                          label:
+                              '${product.name} — '
+                              '${currency.format(product.price)} د.ع',
                         ),
                     ],
-                    onChanged: _isSubmitting
-                        ? null
-                        : (value) => _selectProduct(value, products),
+                    onSelected: (value) => _selectProduct(value, products),
                   ),
                   const SizedBox(height: AppSpacing.fieldGap),
                   TextField(

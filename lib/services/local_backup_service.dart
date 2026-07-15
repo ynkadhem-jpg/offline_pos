@@ -289,7 +289,7 @@ class LocalBackupService {
         BackupFailure(BackupFailureCode.invalidSqlite, cause: error),
       );
     } finally {
-      validationDatabase?.dispose();
+      validationDatabase?.close();
     }
   }
 

@@ -1,18 +1,28 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../design_system/tokens/app_colors.dart';
+import '../design_system/tokens/app_radius.dart';
 import '../design_system/tokens/app_spacing.dart';
 import '../services/database.dart';
 import '../services/product_dao.dart';
 import 'products/deleted_products_screen.dart';
+import 'widgets/app_ui.dart';
 import 'widgets/product_form_dialog.dart';
 
 enum ProductSortOption { nameAsc, nameDesc, priceAsc, priceDesc }
 
 class ProductsScreen extends StatefulWidget {
-  const ProductsScreen({required this.database, super.key});
+  const ProductsScreen({
+    required this.database,
+    required this.onDataChanged,
+    super.key,
+  });
 
   final AppDatabase database;
+  final Future<void> Function() onDataChanged;
 
   @override
   State<ProductsScreen> createState() => _ProductsScreenState();
@@ -42,13 +52,22 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   Stream<List<Product>> _productsStream() {
+    return _productDao.watchActiveProducts();
+  }
+
+  List<Product> _filterProducts(List<Product> products) {
     final query = _searchQuery.trim();
 
     if (query.isEmpty) {
-      return _productDao.watchActiveProducts();
+      return products;
     }
 
-    return _productDao.searchProductsByName(query);
+    final normalizedQuery = query.toLowerCase();
+    return products
+        .where(
+          (product) => product.name.toLowerCase().contains(normalizedQuery),
+        )
+        .toList();
   }
 
   List<Product> _sortProducts(List<Product> products) {
@@ -85,11 +104,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   Future<void> _showProductForm([Product? product]) async {
-    await showDialog<bool>(
+    final changed = await showDialog<bool>(
       context: context,
       builder: (context) =>
           ProductFormDialog(productDao: _productDao, product: product),
     );
+    if (changed == true) {
+      unawaited(widget.onDataChanged());
+    }
   }
 
   Future<void> _showDeletedProducts() async {
@@ -107,22 +129,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
     final shouldDelete = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('حذف المنتج؟'),
-        content: Text(
-          'هل تريد حذف المنتج "${product.name}"؟ يمكنك استرجاعه لاحقاً.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('إلغاء'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('حذف'),
-          ),
-        ],
-      ),
+      builder: (dialogContext) =>
+          _ProductDeleteDialog(productName: product.name),
     );
 
     if (shouldDelete != true || !context.mounted) {
@@ -166,66 +174,219 @@ class _ProductsScreenState extends State<ProductsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('المنتجات'),
-        actions: [
-          IconButton(
-            onPressed: _showDeletedProducts,
-            tooltip: 'المنتجات المحذوفة',
-            icon: const Icon(Icons.restore_from_trash_outlined),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.screenPadding),
+          child: Column(
+            children: [
+              AppPageHeader(
+                title: 'المنتجات',
+                subtitle: 'تنظيم المنتجات والأسعار مع وصول سريع للأرشيف.',
+                action: Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _showDeletedProducts,
+                      icon: const Icon(Icons.restore_from_trash_outlined),
+                      label: const Text('المحذوفة'),
+                    ),
+                    FilledButton.icon(
+                      onPressed: _showProductForm,
+                      icon: const Icon(Icons.add),
+                      label: const Text('إضافة منتج'),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: StreamBuilder<List<Product>>(
+                  stream: _productsStream(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const _ProductsLoadingState();
+                    }
+
+                    if (snapshot.hasError) {
+                      return const _ProductsMessage(
+                        message: 'حدث خطأ أثناء تحميل المنتجات',
+                      );
+                    }
+
+                    final allProducts = snapshot.data ?? [];
+                    final products = _sortProducts(
+                      _filterProducts(allProducts),
+                    );
+                    return Column(
+                      children: [
+                        _ProductOverview(
+                          totalProducts: allProducts.length,
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        _ProductControls(
+                          searchController: _searchController,
+                          sortOption: _sortOption,
+                          onSearchChanged: _onSearchChanged,
+                          onSortChanged: _onSortChanged,
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        Expanded(
+                          child: products.isEmpty
+                              ? _ProductsMessage(
+                                  message: allProducts.isEmpty
+                                      ? 'لا توجد منتجات لعرضها'
+                                      : 'لا توجد نتائج مطابقة',
+                                  description: allProducts.isEmpty
+                                      ? 'أضف المنتجات التي تبيعها حتى تظهر في عمليات التقسيط.'
+                                      : 'جرّب تغيير كلمات البحث أو طريقة الترتيب.',
+                                  onAddProduct: allProducts.isEmpty
+                                      ? _showProductForm
+                                      : null,
+                                )
+                              : GridView.builder(
+                                  gridDelegate:
+                                      const SliverGridDelegateWithMaxCrossAxisExtent(
+                                    maxCrossAxisExtent: 420,
+                                    mainAxisExtent: 196,
+                                    crossAxisSpacing: AppSpacing.md,
+                                    mainAxisSpacing: AppSpacing.md,
+                                  ),
+                                  itemCount: products.length,
+                                  itemBuilder: (context, index) {
+                                    final product = products[index];
+                                    return _ProductCard(
+                                      product: product,
+                                      onEdit: () => _showProductForm(product),
+                                      onDelete: () => _deleteProduct(product),
+                                      isDeleting: _deletingProductIds.contains(
+                                        product.id,
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProductDeleteDialog extends StatelessWidget {
+  const _ProductDeleteDialog({required this.productName});
+
+  final String productName;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.lg,
+      ),
+      contentPadding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.sm,
+      ),
+      title: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: AppColors.errorSoft,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+            ),
+            child: const Icon(
+              Icons.delete_outline,
+              color: AppColors.error,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.rg),
+          Expanded(
+            child: Text('حذف المنتج؟', style: textTheme.titleLarge),
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(AppSpacing.screenPadding),
-        child: Column(
+      content: Text(
+        'هل تريد حذف المنتج "$productName"؟ يمكنك استرجاعه لاحقاً من الأرشيف.',
+        style: textTheme.bodyMedium?.copyWith(color: AppColors.inkMuted),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('إلغاء'),
+        ),
+        FilledButton.icon(
+          onPressed: () => Navigator.of(context).pop(true),
+          icon: const Icon(Icons.delete_outline),
+          label: const Text('حذف'),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.error,
+            foregroundColor: Colors.white,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProductOverview extends StatelessWidget {
+  const _ProductOverview({
+    required this.totalProducts,
+  });
+
+  final int totalProducts;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: AppPanel(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.rg,
+          vertical: AppSpacing.sm,
+        ),
+        backgroundColor: AppColors.surfaceCard.withValues(alpha: 0.72),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            _ProductControls(
-              searchController: _searchController,
-              sortOption: _sortOption,
-              onSearchChanged: _onSearchChanged,
-              onSortChanged: _onSortChanged,
-              onAddProduct: _showProductForm,
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: AppColors.infoSoft,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+              child: const Icon(
+                Icons.inventory_2_outlined,
+                size: 17,
+                color: AppColors.info,
+              ),
             ),
-            const SizedBox(height: AppSpacing.lg),
-            Expanded(
-              child: StreamBuilder<List<Product>>(
-                stream: _productsStream(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  if (snapshot.hasError) {
-                    return const _ProductsMessage(
-                      message: 'حدث خطأ أثناء تحميل المنتجات',
-                    );
-                  }
-
-                  final products = _sortProducts(snapshot.data ?? []);
-
-                  if (products.isEmpty) {
-                    return const _ProductsMessage(
-                      message: 'لا توجد منتجات لعرضها',
-                    );
-                  }
-
-                  return ListView.separated(
-                    itemCount: products.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: AppSpacing.sm),
-                    itemBuilder: (context, index) {
-                      return _ProductListItem(
-                        product: products[index],
-                        onEdit: () => _showProductForm(products[index]),
-                        onDelete: () => _deleteProduct(products[index]),
-                        isDeleting: _deletingProductIds.contains(
-                          products[index].id,
-                        ),
-                      );
-                    },
-                  );
-                },
+            const SizedBox(width: AppSpacing.sm),
+            Text(
+              'مجموع المنتجات',
+              style: textTheme.bodySmall?.copyWith(color: AppColors.inkMuted),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Text(
+              '$totalProducts',
+              style: textTheme.titleSmall?.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w900,
               ),
             ),
           ],
@@ -241,39 +402,33 @@ class _ProductControls extends StatelessWidget {
     required this.sortOption,
     required this.onSearchChanged,
     required this.onSortChanged,
-    required this.onAddProduct,
   });
 
   final TextEditingController searchController;
   final ProductSortOption sortOption;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<ProductSortOption?> onSortChanged;
-  final VoidCallback onAddProduct;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: TextField(
+    return AppPanel(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 720;
+          final search = TextField(
             controller: searchController,
             onChanged: onSearchChanged,
             textInputAction: TextInputAction.search,
             decoration: const InputDecoration(
-              labelText: 'بحث',
               hintText: 'ابحث باسم المنتج',
               prefixIcon: Icon(Icons.search),
             ),
-          ),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        SizedBox(
-          width: AppSpacing.xxl * 5,
-          child: DropdownButtonFormField<ProductSortOption>(
+          );
+          final sort = DropdownButtonFormField<ProductSortOption>(
             initialValue: sortOption,
+            isExpanded: true,
             decoration: const InputDecoration(
-              labelText: 'الترتيب',
               prefixIcon: Icon(Icons.sort),
             ),
             items: const [
@@ -295,21 +450,33 @@ class _ProductControls extends StatelessWidget {
               ),
             ],
             onChanged: onSortChanged,
-          ),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        FilledButton.icon(
-          onPressed: onAddProduct,
-          icon: const Icon(Icons.add),
-          label: const Text('إضافة منتج'),
-        ),
-      ],
+          );
+          if (compact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                search,
+                const SizedBox(height: AppSpacing.sm),
+                sort,
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              Expanded(child: search),
+              const SizedBox(width: AppSpacing.md),
+              SizedBox(width: 260, child: sort),
+            ],
+          );
+        },
+      ),
     );
   }
 }
 
-class _ProductListItem extends StatelessWidget {
-  const _ProductListItem({
+class _ProductCard extends StatelessWidget {
+  const _ProductCard({
     required this.product,
     required this.onEdit,
     required this.onDelete,
@@ -325,61 +492,278 @@ class _ProductListItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final currency = NumberFormat.decimalPattern('en');
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.cardPadding),
-        child: Row(
-          children: [
-            SizedBox(
-              width: AppSpacing.xxl + AppSpacing.xl,
-              child: Text('#${product.id}', style: textTheme.labelLarge),
-            ),
-            Expanded(child: Text(product.name, style: textTheme.titleMedium)),
-            const SizedBox(width: AppSpacing.md),
-            Text(
-              '${currency.format(product.price)} د.ع',
-              style: textTheme.titleMedium,
-            ),
-            const SizedBox(width: AppSpacing.md),
-            IconButton(
-              onPressed: isDeleting ? null : onEdit,
-              tooltip: 'تعديل المنتج',
-              icon: const Icon(Icons.edit_outlined),
-            ),
-            if (isDeleting)
-              const SizedBox.square(
-                dimension: AppSpacing.minTouchTarget,
-                child: Padding(
-                  padding: EdgeInsets.all(AppSpacing.md),
-                  child: CircularProgressIndicator(strokeWidth: AppSpacing.xs),
+    final price = '${currency.format(product.price)} د.ع';
+
+    return AppPanel(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.accentSoft,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
                 ),
-              )
-            else
-              IconButton(
-                onPressed: onDelete,
-                tooltip: 'حذف المنتج',
-                icon: const Icon(Icons.delete_outline),
+                child: const Icon(
+                  Icons.inventory_2_outlined,
+                  color: AppColors.accent,
+                ),
               ),
+              const SizedBox(width: AppSpacing.rg),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      '#${product.id}',
+                      style: textTheme.bodySmall?.copyWith(
+                        color: AppColors.inkMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              AppStatusChip(
+                label: 'نشط',
+                icon: Icons.check_circle_outline,
+                tone: AppStatusTone.success,
+              ),
+            ],
+          ),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.rg),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceMuted.withValues(alpha: 0.72),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.payments_outlined,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  'السعر',
+                  style: textTheme.bodySmall?.copyWith(
+                    color: AppColors.inkMuted,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  price,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.titleMedium?.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: isDeleting ? null : onEdit,
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('تعديل'),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              SizedBox(
+                width: AppSpacing.minTouchTarget,
+                height: AppSpacing.minTouchTarget,
+                child: isDeleting
+                    ? const Padding(
+                        padding: EdgeInsets.all(AppSpacing.rg),
+                        child: CircularProgressIndicator(
+                          strokeWidth: AppSpacing.xs,
+                        ),
+                      )
+                    : IconButton.filledTonal(
+                        onPressed: onDelete,
+                        tooltip: 'حذف المنتج',
+                        icon: const Icon(Icons.delete_outline),
+                        color: AppColors.error,
+                        style: IconButton.styleFrom(
+                          backgroundColor: AppColors.errorSoft,
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProductsLoadingState extends StatelessWidget {
+  const _ProductsLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        AppResponsiveWrap(
+          wideColumns: 3,
+          children: const [
+            _SkeletonPanel(height: 126),
+            _SkeletonPanel(height: 126),
+            _SkeletonPanel(height: 126),
           ],
         ),
+        const SizedBox(height: AppSpacing.md),
+        const _SkeletonPanel(height: 82),
+        const SizedBox(height: AppSpacing.lg),
+        Expanded(
+          child: GridView.builder(
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 420,
+              mainAxisExtent: 196,
+              crossAxisSpacing: AppSpacing.md,
+              mainAxisSpacing: AppSpacing.md,
+            ),
+            itemCount: 6,
+            itemBuilder: (context, index) => const _SkeletonPanel(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SkeletonPanel extends StatelessWidget {
+  const _SkeletonPanel({this.height});
+
+  final double? height;
+
+  @override
+  Widget build(BuildContext context) {
+    final compact = height != null && height! < 120;
+
+    return AppPanel(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: SizedBox(
+        height: height,
+        child: compact
+            ? Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceMuted,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 180,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceMuted,
+                            borderRadius: BorderRadius.circular(AppRadius.full),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Container(
+                          width: 120,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceMuted,
+                            borderRadius: BorderRadius.circular(AppRadius.full),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceMuted,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Container(
+                    width: 160,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceMuted,
+                      borderRadius: BorderRadius.circular(AppRadius.full),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Container(
+                    width: 92,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceMuted,
+                      borderRadius: BorderRadius.circular(AppRadius.full),
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }
 }
 
 class _ProductsMessage extends StatelessWidget {
-  const _ProductsMessage({required this.message});
+  const _ProductsMessage({
+    required this.message,
+    this.description,
+    this.onAddProduct,
+  });
 
   final String message;
+  final String? description;
+  final VoidCallback? onAddProduct;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        message,
-        style: Theme.of(context).textTheme.titleMedium,
-        textAlign: TextAlign.center,
+    return AppPanel(
+      child: AppEmptyState(
+        icon: Icons.inventory_2_outlined,
+        title: message,
+        description:
+            description ?? 'أضف المنتجات التي تبيعها حتى تظهر في عمليات التقسيط.',
+        action: onAddProduct == null
+            ? null
+            : FilledButton.tonalIcon(
+                onPressed: onAddProduct,
+                icon: const Icon(Icons.add),
+                label: const Text('إضافة أول منتج'),
+              ),
       ),
     );
   }

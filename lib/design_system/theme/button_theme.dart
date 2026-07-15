@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../tokens/app_colors.dart';
 import '../tokens/app_radius.dart';
 import '../tokens/app_spacing.dart';
 
@@ -10,15 +11,20 @@ abstract final class ButtonThemeConfig {
   }) {
     return ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
+        elevation: 0,
+        backgroundColor: AppColors.surfaceCard,
+        foregroundColor: AppColors.primary,
         minimumSize: const Size(0, AppSpacing.minTouchTarget),
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
-          vertical: AppSpacing.md,
+          vertical: AppSpacing.rg,
         ),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.sm),
+          borderRadius: BorderRadius.circular(AppRadius.md),
         ),
-        textStyle: textTheme.labelLarge,
+        textStyle: textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
@@ -29,15 +35,19 @@ abstract final class ButtonThemeConfig {
   }) {
     return FilledButtonThemeData(
       style: FilledButton.styleFrom(
+        backgroundColor: AppColors.accent,
+        foregroundColor: Colors.white,
         minimumSize: const Size(0, AppSpacing.minTouchTarget),
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
-          vertical: AppSpacing.md,
+          vertical: AppSpacing.rg,
         ),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.sm),
+          borderRadius: BorderRadius.circular(AppRadius.md),
         ),
-        textStyle: textTheme.labelLarge,
+        textStyle: textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
@@ -48,15 +58,19 @@ abstract final class ButtonThemeConfig {
   }) {
     return OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.primary,
         minimumSize: const Size(0, AppSpacing.minTouchTarget),
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
-          vertical: AppSpacing.md,
+          vertical: AppSpacing.rg,
         ),
+        side: const BorderSide(color: AppColors.borderStrong),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.sm),
+          borderRadius: BorderRadius.circular(AppRadius.md),
         ),
-        textStyle: textTheme.labelLarge,
+        textStyle: textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
@@ -67,12 +81,18 @@ abstract final class ButtonThemeConfig {
   }) {
     return TextButtonThemeData(
       style: TextButton.styleFrom(
+        foregroundColor: AppColors.primary,
         minimumSize: const Size(0, AppSpacing.minTouchTarget),
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
           vertical: AppSpacing.sm,
         ),
-        textStyle: textTheme.labelLarge,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+        textStyle: textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }

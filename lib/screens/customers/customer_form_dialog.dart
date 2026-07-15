@@ -1,7 +1,12 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
+import '../../design_system/tokens/app_colors.dart';
+import '../../design_system/tokens/app_radius.dart';
 import '../../design_system/tokens/app_spacing.dart';
 import '../../services/customer_dao.dart';
+import '../widgets/app_ui.dart';
 
 class CustomerFormDialog extends StatefulWidget {
   const CustomerFormDialog({required this.customerDao, super.key});
@@ -91,84 +96,174 @@ class _CustomerFormDialogState extends State<CustomerFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
-    return AlertDialog(
-      title: const Text('إضافة زبون'),
-      content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: AppSpacing.xxl * 10),
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: _nameController,
-                  enabled: !_isSubmitting,
-                  autofocus: true,
-                  textInputAction: TextInputAction.next,
-                  validator: (value) =>
-                      _validateRequired(value, 'يرجى إدخال اسم الزبون'),
-                  decoration: const InputDecoration(
-                    labelText: 'اسم الزبون',
-                    prefixIcon: Icon(Icons.person_outline),
+    return Directionality(
+      textDirection: ui.TextDirection.rtl,
+      child: Dialog(
+        insetPadding: const EdgeInsets.all(AppSpacing.lg),
+        backgroundColor: Colors.transparent,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: AppPanel(
+            padding: EdgeInsets.zero,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: AlignmentDirectional.topStart,
+                        end: AlignmentDirectional.bottomEnd,
+                        colors: [AppColors.primary, AppColors.primaryHover],
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.13),
+                            borderRadius: BorderRadius.circular(AppRadius.lg),
+                          ),
+                          child: const Icon(
+                            Icons.person_add_alt_1,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'إضافة زبون جديد',
+                                style: textTheme.titleLarge?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.xs),
+                              Text(
+                                'أدخل معلومات الزبون الأساسية لبدء البيع بالتقسيط.',
+                                style: textTheme.bodySmall?.copyWith(
+                                  color: Colors.white.withValues(alpha: 0.74),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.fieldGap),
-                TextFormField(
-                  controller: _addressController,
-                  enabled: !_isSubmitting,
-                  textInputAction: TextInputAction.next,
-                  validator: (value) =>
-                      _validateRequired(value, 'يرجى إدخال العنوان'),
-                  decoration: const InputDecoration(
-                    labelText: 'العنوان',
-                    prefixIcon: Icon(Icons.location_on_outlined),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.fieldGap),
-                TextFormField(
-                  controller: _phoneController,
-                  enabled: !_isSubmitting,
-                  keyboardType: TextInputType.phone,
-                  textInputAction: TextInputAction.done,
-                  validator: _validatePhone,
-                  onFieldSubmitted: (_) => _submit(),
-                  decoration: const InputDecoration(
-                    labelText: 'رقم الهاتف',
-                    prefixIcon: Icon(Icons.phone_outlined),
-                  ),
-                ),
-                if (_submissionError != null) ...[
-                  const SizedBox(height: AppSpacing.fieldGap),
-                  Text(
-                    _submissionError!,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(color: colorScheme.error),
+                  Padding(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: SingleChildScrollView(
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            TextFormField(
+                              controller: _nameController,
+                              enabled: !_isSubmitting,
+                              autofocus: true,
+                              textInputAction: TextInputAction.next,
+                              validator: (value) => _validateRequired(
+                                value,
+                                'يرجى إدخال اسم الزبون',
+                              ),
+                              decoration: const InputDecoration(
+                                labelText: 'اسم الزبون',
+                                hintText: 'مثال: أحمد علي',
+                                prefixIcon: Icon(Icons.person_outline),
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.fieldGap),
+                            TextFormField(
+                              controller: _addressController,
+                              enabled: !_isSubmitting,
+                              textInputAction: TextInputAction.next,
+                              validator: (value) => _validateRequired(
+                                value,
+                                'يرجى إدخال العنوان',
+                              ),
+                              decoration: const InputDecoration(
+                                labelText: 'العنوان',
+                                hintText: 'المنطقة أو أقرب نقطة دالة',
+                                prefixIcon: Icon(Icons.location_on_outlined),
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.fieldGap),
+                            TextFormField(
+                              controller: _phoneController,
+                              enabled: !_isSubmitting,
+                              keyboardType: TextInputType.phone,
+                              textInputAction: TextInputAction.done,
+                              validator: _validatePhone,
+                              onFieldSubmitted: (_) => _submit(),
+                              decoration: const InputDecoration(
+                                labelText: 'رقم الهاتف',
+                                hintText: '07xxxxxxxxx',
+                                prefixIcon: Icon(Icons.phone_outlined),
+                              ),
+                            ),
+                            if (_submissionError != null) ...[
+                              const SizedBox(height: AppSpacing.fieldGap),
+                              AppStatusChip(
+                                label: _submissionError!,
+                                tone: AppStatusTone.error,
+                                icon: Icons.error_outline,
+                              ),
+                            ],
+                            const SizedBox(height: AppSpacing.lg),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: _isSubmitting
+                                        ? null
+                                        : () => Navigator.of(context).pop(),
+                                    child: const Text('إلغاء'),
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.md),
+                                Expanded(
+                                  child: FilledButton.icon(
+                                    onPressed:
+                                        _isSubmitting ? null : _submit,
+                                    icon: _isSubmitting
+                                        ? const SizedBox.square(
+                                            dimension: 18,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        : const Icon(Icons.check),
+                                    label: Text(
+                                      _isSubmitting ? 'جاري الحفظ' : 'إضافة',
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ],
-              ],
+              ),
             ),
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
-          child: const Text('إلغاء'),
-        ),
-        FilledButton(
-          onPressed: _isSubmitting ? null : _submit,
-          child: _isSubmitting
-              ? const SizedBox.square(
-                  dimension: AppSpacing.lg,
-                  child: CircularProgressIndicator(strokeWidth: AppSpacing.xs),
-                )
-              : const Text('إضافة'),
-        ),
-      ],
     );
   }
 }

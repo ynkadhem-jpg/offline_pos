@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:offline_pos/services/database.dart';
-import 'package:offline_pos/services/sales_report_dao.dart';
+import 'package:taqseet/services/database.dart';
+import 'package:taqseet/services/sales_report_dao.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
+import '../../design_system/tokens/app_colors.dart';
+import '../../design_system/tokens/app_radius.dart';
 import '../../design_system/tokens/app_spacing.dart';
 import '../../services/database.dart';
 import '../../services/product_dao.dart';
+import 'app_ui.dart';
 
 class ProductFormDialog extends StatefulWidget {
   const ProductFormDialog({required this.productDao, this.product, super.key});
@@ -31,6 +35,11 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     _priceController = TextEditingController(
       text: widget.product?.price.toString() ?? '',
     );
+  }
+
+  double? get _previewPrice {
+    final normalizedValue = _priceController.text.trim().replaceAll('٫', '.');
+    return double.tryParse(normalizedValue);
   }
 
   @override
@@ -112,9 +121,53 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final title = widget.isEditing ? 'تعديل المنتج' : 'إضافة منتج';
 
     return AlertDialog(
-      title: Text(widget.isEditing ? 'تعديل المنتج' : 'إضافة منتج'),
+      insetPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.lg,
+      ),
+      contentPadding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.sm,
+      ),
+      title: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: AppColors.accentSoft,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+            ),
+            child: const Icon(
+              Icons.inventory_2_outlined,
+              color: AppColors.accent,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.rg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'عرّف المنتج وسعره الأساسي لاستخدامه في عمليات التقسيط.',
+                  style: textTheme.bodySmall?.copyWith(
+                    color: AppColors.inkMuted,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: AppSpacing.xxl * 10),
         child: SingleChildScrollView(
@@ -130,8 +183,10 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                   autofocus: true,
                   textInputAction: TextInputAction.next,
                   validator: _validateName,
+                  onChanged: (_) => setState(() => _submissionError = null),
                   decoration: const InputDecoration(
                     labelText: 'اسم المنتج',
+                    hintText: 'مثال: هاتف Samsung A55',
                     prefixIcon: Icon(Icons.inventory_2_outlined),
                   ),
                 ),
@@ -144,12 +199,16 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                   ),
                   textInputAction: TextInputAction.done,
                   validator: _validatePrice,
+                  onChanged: (_) => setState(() => _submissionError = null),
                   onFieldSubmitted: (_) => _submit(),
                   decoration: const InputDecoration(
                     labelText: 'السعر',
+                    hintText: 'أدخل السعر بالدينار العراقي',
                     prefixIcon: Icon(Icons.payments_outlined),
                   ),
                 ),
+                const SizedBox(height: AppSpacing.lg),
+                _ProductPricePreview(price: _previewPrice),
                 if (_submissionError != null) ...[
                   const SizedBox(height: AppSpacing.fieldGap),
                   Text(
@@ -179,6 +238,66 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
               : Text(widget.isEditing ? 'حفظ' : 'إضافة'),
         ),
       ],
+    );
+  }
+}
+
+class _ProductPricePreview extends StatelessWidget {
+  const _ProductPricePreview({required this.price});
+
+  final double? price;
+
+  @override
+  Widget build(BuildContext context) {
+    final currency = NumberFormat.decimalPattern('en');
+    final textTheme = Theme.of(context).textTheme;
+    final isReady = price != null && price!.isFinite && price! > 0;
+
+    return AppPanel(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      backgroundColor: AppColors.surfaceMuted.withValues(alpha: 0.72),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: isReady ? AppColors.successSoft : AppColors.surfaceTint,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Icon(
+              isReady ? Icons.check_circle_outline : Icons.price_check_outlined,
+              color: isReady ? AppColors.success : AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.rg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'معاينة السعر',
+                  style: textTheme.bodySmall?.copyWith(
+                    color: AppColors.inkMuted,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  isReady
+                      ? '${currency.format(price)} د.ع'
+                      : 'أدخل السعر لعرضه هنا',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.titleMedium?.copyWith(
+                    color: isReady ? AppColors.primary : AppColors.inkMuted,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

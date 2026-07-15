@@ -1,5 +1,5 @@
-name: offline_pos
-description: "A new Flutter project."
+name: taqseet
+description: "تطبيق تنظيم واتمتة عمل محلات البيع بالتقسيط الصغيرة."
 publish_to: 'none'
 version: 0.1.0+1
 
@@ -15,7 +15,6 @@ dependencies:
   sqlite3_flutter_libs: ^0.5.34
   path_provider: ^2.1.5
   file_picker: ^10.3.10
-  google_fonts: ^8.1.0
   intl: ^0.20.2
   path: ^1.9.1
   sqlite3: ^3.4.0
@@ -28,3 +27,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/branding/app_logo.png

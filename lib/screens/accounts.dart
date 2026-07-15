@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' show NumberFormat;
 
 import '../design_system/tokens/app_colors.dart';
+import '../design_system/tokens/app_radius.dart';
 import '../design_system/tokens/app_spacing.dart';
 import '../services/database.dart';
 import '../services/reports_dao.dart';
 import '../services/sales_report_dao.dart';
+import 'widgets/app_ui.dart';
 
 class AccountsScreen extends StatefulWidget {
   const AccountsScreen({required this.database, super.key});
@@ -129,7 +131,6 @@ class _AccountsScreenState extends State<AccountsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('الحسابات')),
       body: Directionality(
         textDirection: TextDirection.rtl,
         child: SingleChildScrollView(
@@ -137,20 +138,22 @@ class _AccountsScreenState extends State<AccountsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('ملخص الحسابات', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: AppSpacing.md),
+              const AppPageHeader(
+                title: 'التقارير',
+                subtitle: 'متابعة الأرباح والمبيعات والمنتجات الأكثر حركة.',
+              ),
               _buildSummarySection(),
               const SizedBox(height: AppSpacing.xl),
-              Text(
-                'المنتجات الأكثر مبيعاً',
-                style: Theme.of(context).textTheme.titleLarge,
+              const AppSectionHeader(
+                title: 'المنتجات الأكثر مبيعاً',
+                icon: Icons.workspace_premium_outlined,
               ),
               const SizedBox(height: AppSpacing.md),
               _buildTopProductsSection(),
               const SizedBox(height: AppSpacing.xl),
-              Text(
-                'المبيعات',
-                style: Theme.of(context).textTheme.titleLarge,
+              const AppSectionHeader(
+                title: 'المبيعات',
+                icon: Icons.receipt_long_outlined,
               ),
               const SizedBox(height: AppSpacing.md),
               _buildFilters(),
@@ -180,40 +183,78 @@ class _AccountsScreenState extends State<AccountsScreen> {
         final summary = snapshot.data!;
         return LayoutBuilder(
           builder: (context, constraints) {
-            final columns = constraints.maxWidth >= 900
-                ? 3
-                : constraints.maxWidth >= 560
-                ? 2
-                : 1;
-            final width =
-                (constraints.maxWidth - AppSpacing.md * (columns - 1)) /
-                columns;
-            return Wrap(
-              spacing: AppSpacing.md,
-              runSpacing: AppSpacing.md,
+            final metrics = [
+              AppMetricCard(
+                icon: Icons.trending_up,
+                label: 'الأرباح الصافية',
+                value: _formatMoney(summary.totalProfit),
+                subtitle: 'بعد احتساب الفائدة',
+                tone: AppStatusTone.success,
+                compact: true,
+              ),
+              AppMetricCard(
+                icon: Icons.receipt_long_outlined,
+                label: 'عدد المبيعات',
+                value: '${summary.totalSales}',
+                subtitle: 'عملية نشطة',
+                tone: AppStatusTone.info,
+                compact: true,
+              ),
+              AppMetricCard(
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'المبالغ المتبقية',
+                value: _formatMoney(summary.remainingBalance),
+                subtitle: 'بانتظار التحصيل',
+                tone: AppStatusTone.warning,
+                compact: true,
+              ),
+            ];
+
+            if (constraints.maxWidth < 900) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AppHeroCard(
+                    label: 'إجمالي المبالغ المستحصلة',
+                    value: _formatMoney(summary.totalCollected),
+                    icon: Icons.payments_outlined,
+                    subtitle: 'كل المدفوعات المسجلة على المبيعات النشطة.',
+                    action: const AppStatusChip(
+                      label: 'مباشر',
+                      icon: Icons.bolt_outlined,
+                      tone: AppStatusTone.accent,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  AppResponsiveWrap(wideColumns: 3, children: metrics),
+                ],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  width: width,
-                  child: _SummaryCard(
-                    icon: Icons.trending_up,
-                    label: 'الأرباح',
-                    value: _formatMoney(summary.totalProfit),
+                Expanded(
+                  flex: 5,
+                  child: AppHeroCard(
+                    label: 'إجمالي المبالغ المستحصلة',
+                    value: _formatMoney(summary.totalCollected),
+                    icon: Icons.payments_outlined,
+                    subtitle: 'كل المدفوعات المسجلة على المبيعات النشطة.',
+                    action: const AppStatusChip(
+                      label: 'تحديث مباشر',
+                      icon: Icons.bolt_outlined,
+                      tone: AppStatusTone.accent,
+                    ),
                   ),
                 ),
-                SizedBox(
-                  width: width,
-                  child: _SummaryCard(
-                    icon: Icons.receipt_long_outlined,
-                    label: 'عدد المبيعات',
-                    value: '${summary.totalSales}',
-                  ),
-                ),
-                SizedBox(
-                  width: width,
-                  child: _SummaryCard(
-                    icon: Icons.account_balance_wallet_outlined,
-                    label: 'المبالغ المتبقية',
-                    value: _formatMoney(summary.remainingBalance),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  flex: 6,
+                  child: AppResponsiveWrap(
+                    wideColumns: 3,
+                    mediumColumns: 3,
+                    children: metrics,
                   ),
                 ),
               ],
@@ -245,29 +286,16 @@ class _AccountsScreenState extends State<AccountsScreen> {
           );
         }
 
-        return Card(
-          margin: EdgeInsets.zero,
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.cardPadding),
-            child: Column(
-              children: [
-                for (var index = 0; index < products.length; index++) ...[
-                  ListTile(
-                    leading: CircleAvatar(child: Text('${index + 1}')),
-                    title: Text(
-                      products[index].productName,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: products[index].isDeleted
-                        ? const Text('منتج محذوف')
-                        : null,
-                    trailing: Text('${products[index].salesCount} مبيعات'),
-                  ),
-                  if (index < products.length - 1) const Divider(),
-                ],
+        return AppPanel(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            children: [
+              for (var index = 0; index < products.length; index++) ...[
+                _TopProductRow(product: products[index], rank: index + 1),
+                if (index < products.length - 1)
+                  const SizedBox(height: AppSpacing.sm),
               ],
-            ),
+            ],
           ),
         );
       },
@@ -276,57 +304,81 @@ class _AccountsScreenState extends State<AccountsScreen> {
 
   Widget _buildFilters() {
     final hasDateFilter = _fromDate != null || _toDate != null;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        TextField(
-          controller: _searchController,
-          onChanged: (value) => setState(() => _searchQuery = value),
-          decoration: InputDecoration(
-            labelText: 'بحث باسم الزبون أو المنتج',
-            prefixIcon: const Icon(Icons.search),
-            suffixIcon: _searchQuery.isEmpty
-                ? null
-                : IconButton(
-                    tooltip: 'مسح البحث',
-                    onPressed: () {
-                      _searchController.clear();
-                      setState(() => _searchQuery = '');
-                    },
-                    icon: const Icon(Icons.clear),
-                  ),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
-          children: [
-            OutlinedButton.icon(
-              onPressed: _selectFromDate,
-              icon: const Icon(Icons.calendar_today_outlined),
-              label: Text(
-                _fromDate == null
-                    ? 'من تاريخ'
-                    : 'من: ${_formatDate(_fromDate!)}',
-              ),
+    return AppPanel(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 760;
+          final search = TextField(
+            controller: _searchController,
+            onChanged: (value) => setState(() => _searchQuery = value),
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: 'ابحث باسم الزبون أو المنتج',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _searchQuery.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'مسح البحث',
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() => _searchQuery = '');
+                      },
+                      icon: const Icon(Icons.clear),
+                    ),
             ),
-            OutlinedButton.icon(
-              onPressed: _selectToDate,
-              icon: const Icon(Icons.event_outlined),
-              label: Text(
-                _toDate == null ? 'إلى تاريخ' : 'إلى: ${_formatDate(_toDate!)}',
+          );
+          final dateButtons = Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              OutlinedButton.icon(
+                onPressed: _selectFromDate,
+                icon: const Icon(Icons.calendar_today_outlined),
+                label: Text(
+                  _fromDate == null
+                      ? 'من تاريخ'
+                      : 'من: ${_formatDate(_fromDate!)}',
+                ),
               ),
-            ),
-            if (hasDateFilter)
-              TextButton.icon(
-                onPressed: _clearDateRange,
-                icon: const Icon(Icons.filter_alt_off_outlined),
-                label: const Text('مسح التاريخ'),
+              OutlinedButton.icon(
+                onPressed: _selectToDate,
+                icon: const Icon(Icons.event_outlined),
+                label: Text(
+                  _toDate == null
+                      ? 'إلى تاريخ'
+                      : 'إلى: ${_formatDate(_toDate!)}',
+                ),
               ),
-          ],
-        ),
-      ],
+              if (hasDateFilter)
+                TextButton.icon(
+                  onPressed: _clearDateRange,
+                  icon: const Icon(Icons.filter_alt_off_outlined),
+                  label: const Text('مسح التاريخ'),
+                ),
+            ],
+          );
+
+          if (compact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                search,
+                const SizedBox(height: AppSpacing.sm),
+                dateButtons,
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              Expanded(child: search),
+              const SizedBox(width: AppSpacing.md),
+              dateButtons,
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -413,45 +465,79 @@ class _AccountsScreenState extends State<AccountsScreen> {
   }
 }
 
-class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
+class _TopProductRow extends StatelessWidget {
+  const _TopProductRow({required this.product, required this.rank});
 
-  final IconData icon;
-  final String label;
-  final String value;
+  final TopSellingProduct product;
+  final int rank;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.cardPadding),
-        child: Row(
-          children: [
-            Icon(icon, color: colorScheme.primary),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label, style: Theme.of(context).textTheme.bodyMedium),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ],
+    final textTheme = Theme.of(context).textTheme;
+    final isLeader = rank == 1;
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.rg),
+      decoration: BoxDecoration(
+        color: isLeader
+            ? AppColors.accentSoft.withValues(alpha: 0.58)
+            : AppColors.surfaceMuted.withValues(alpha: 0.56),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(
+          color: isLeader
+              ? AppColors.accent.withValues(alpha: 0.20)
+              : AppColors.border,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: isLeader ? AppColors.accent : AppColors.surfaceTint,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Center(
+              child: Text(
+                '$rank',
+                style: textTheme.titleSmall?.copyWith(
+                  color: isLeader ? Colors.white : AppColors.primary,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: AppSpacing.rg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  product.productName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.titleSmall,
+                ),
+                if (product.isDeleted) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'منتج محذوف',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: AppColors.inkMuted,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          AppStatusChip(
+            label: '${product.salesCount} مبيعات',
+            icon: Icons.local_fire_department_outlined,
+            tone: isLeader ? AppStatusTone.accent : AppStatusTone.neutral,
+          ),
+        ],
       ),
     );
   }
@@ -471,73 +557,88 @@ class _SaleCard extends StatelessWidget {
     String date(DateTime value) =>
         '${value.year}/${value.month.toString().padLeft(2, '0')}/'
         '${value.day.toString().padLeft(2, '0')}';
+    final textTheme = Theme.of(context).textTheme;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.cardPadding),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: AppPanel(
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    sale.customerName,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium,
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceTint,
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                  ),
+                  child: const Icon(
+                    Icons.receipt_long_outlined,
+                    color: AppColors.primary,
                   ),
                 ),
-                const SizedBox(width: AppSpacing.md),
-                Flexible(
-                  child: Text(
-                    sale.productName,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.end,
+                const SizedBox(width: AppSpacing.rg),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        sale.customerName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        sale.productName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.bodySmall?.copyWith(
+                          color: AppColors.inkMuted,
+                        ),
+                      ),
+                    ],
                   ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                AppStatusChip(
+                  label: sale.isFullyPaid ? 'مدفوع بالكامل' : 'نشط',
+                  icon: sale.isFullyPaid
+                      ? Icons.check_circle_outline
+                      : Icons.schedule_outlined,
+                  tone: sale.isFullyPaid
+                      ? AppStatusTone.success
+                      : AppStatusTone.info,
                 ),
               ],
             ),
-            if (sale.isFullyPaid) ...[
-              const SizedBox(height: AppSpacing.sm),
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: Chip(
-                  avatar: const Icon(
-                    Icons.check_circle_outline,
-                    color: AppColors.success,
-                  ),
-                  label: const Text('مدفوع بالكامل'),
-                  labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: AppColors.success,
-                  ),
-                  side: const BorderSide(color: AppColors.success),
-                ),
-              ),
-            ],
             const SizedBox(height: AppSpacing.md),
             Wrap(
-              spacing: AppSpacing.lg,
+              spacing: AppSpacing.sm,
               runSpacing: AppSpacing.sm,
               children: [
                 _SaleValue(
                   label: 'السعر الأصلي',
                   value: money(sale.originalPrice),
+                  icon: Icons.price_change_outlined,
                 ),
                 _SaleValue(
-                  label: 'الفائدة الثابتة',
+                  label: 'الفائدة',
                   value: money(sale.interestAmount),
+                  icon: Icons.trending_up_outlined,
                 ),
                 _SaleValue(
                   label: 'المبلغ الكلي',
                   value: money(sale.totalAmount),
+                  icon: Icons.account_balance_wallet_outlined,
                 ),
                 _SaleValue(
                   label: 'تاريخ البدء',
                   value: date(sale.startDate),
+                  icon: Icons.calendar_today_outlined,
                 ),
               ],
             ),
@@ -549,22 +650,51 @@ class _SaleCard extends StatelessWidget {
 }
 
 class _SaleValue extends StatelessWidget {
-  const _SaleValue({required this.label, required this.value});
+  const _SaleValue({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
 
   final String label;
   final String value;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 150),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.labelMedium),
-          const SizedBox(height: AppSpacing.xs),
-          Text(value, style: Theme.of(context).textTheme.bodyLarge),
-        ],
+    return SizedBox(
+      width: 220,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.rg),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceMuted.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: AppColors.primary),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: Theme.of(context).textTheme.labelMedium),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -578,18 +708,10 @@ class _SectionMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: Theme.of(context).colorScheme.onSurfaceVariant),
-            const SizedBox(width: AppSpacing.sm),
-            Flexible(child: Text(message)),
-          ],
-        ),
+    return AppPanel(
+      child: AppEmptyState(
+        icon: icon,
+        title: message,
       ),
     );
   }

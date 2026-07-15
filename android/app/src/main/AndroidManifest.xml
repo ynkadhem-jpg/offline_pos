@@ -4,7 +4,7 @@
         android:maxSdkVersion="28" />
 
     <application
-        android:label="offline_pos"
+        android:label="تقسيط"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

@@ -22,6 +22,8 @@ abstract interface class AutomaticBackupStorage {
 
   Future<List<StoredAutomaticBackup>> listAutomaticBackups();
 
+  Future<String> copyBackupToCache(StoredAutomaticBackup backup);
+
   Future<void> deleteBackup(StoredAutomaticBackup backup);
 }
 
@@ -58,6 +60,21 @@ class AndroidAutomaticBackupStorage implements AutomaticBackupStorage {
     return (values ?? const <Object?>[])
         .map((value) => _fromMap(Map<Object?, Object?>.from(value! as Map)))
         .toList(growable: false);
+  }
+
+  @override
+  Future<String> copyBackupToCache(StoredAutomaticBackup backup) async {
+    final path = await _channel.invokeMethod<String>(
+      'copyBackupToCache',
+      {'identifier': backup.identifier, 'fileName': backup.name},
+    );
+    if (path == null || path.isEmpty) {
+      throw PlatformException(
+        code: 'copy_failed',
+        message: 'Android did not return a temporary backup path.',
+      );
+    }
+    return path;
   }
 
   @override

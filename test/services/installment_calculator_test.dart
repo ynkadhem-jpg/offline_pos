@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:offline_pos/services/installment_calculator.dart';
+import 'package:taqseet/services/installment_calculator.dart';
 
 void main() {
   group('calculateInstallment', () {

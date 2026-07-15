@@ -49,20 +49,17 @@ class SharedPreferencesAutomaticBackupTimestampStore
 
 class AutomaticBackupService {
   AutomaticBackupService({
-    required LocalBackupService localBackupService,
-    required AutomaticBackupStorage storage,
-    required AutomaticBackupTimestampStore timestampStore,
+    required this._localBackupService,
+    required this._storage,
+    required this._timestampStore,
     DateTime Function()? clock,
-  }) : _localBackupService = localBackupService,
-       _storage = storage,
-       _timestampStore = timestampStore,
-       _clock = clock ?? DateTime.now;
+  }) : _clock = clock ?? DateTime.now;
 
   static final RegExp _automaticBackupName = RegExp(
     r'^offline_pos_auto_backup_\d{4}-\d{2}-\d{2}_\d{6}\.db$',
   );
   static const _minimumInterval = Duration(hours: 24);
-  static const _retainedBackups = 7;
+  static const _retainedBackups = 15;
   static bool _isRunning = false;
 
   final LocalBackupService _localBackupService;
@@ -71,6 +68,17 @@ class AutomaticBackupService {
   final DateTime Function() _clock;
 
   Future<AutomaticBackupResult> runIfDue(AppDatabase database) async {
+    return _run(database, enforceMinimumInterval: true);
+  }
+
+  Future<AutomaticBackupResult> runNow(AppDatabase database) async {
+    return _run(database, enforceMinimumInterval: false);
+  }
+
+  Future<AutomaticBackupResult> _run(
+    AppDatabase database, {
+    required bool enforceMinimumInterval,
+  }) async {
     if (_isRunning) {
       return const AutomaticBackupResult(
         AutomaticBackupStatus.alreadyRunning,
@@ -93,7 +101,8 @@ class AutomaticBackupService {
           ? null
           : storedBackups.first.modifiedAtUtc;
       final lastSuccess = _latest(savedTimestamp, newestFileTimestamp);
-      if (lastSuccess != null &&
+      if (enforceMinimumInterval &&
+          lastSuccess != null &&
           nowUtc.isBefore(lastSuccess.add(_minimumInterval))) {
         return const AutomaticBackupResult(AutomaticBackupStatus.notDue);
       }

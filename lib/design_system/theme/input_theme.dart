@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../tokens/app_colors.dart';
 import '../tokens/app_radius.dart';
 import '../tokens/app_spacing.dart';
 
@@ -8,31 +9,35 @@ abstract final class InputThemeConfig {
     required ColorScheme colorScheme,
     required TextTheme textTheme,
   }) {
-    final borderRadius = BorderRadius.circular(AppRadius.sm);
+    final borderRadius = BorderRadius.circular(AppRadius.md);
 
     return InputDecorationTheme(
       filled: true,
-      fillColor: colorScheme.surfaceContainerHighest,
+      fillColor: AppColors.surfaceMuted,
       contentPadding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
-        vertical: AppSpacing.md,
+        vertical: AppSpacing.rg,
       ),
       border: OutlineInputBorder(borderRadius: borderRadius),
       enabledBorder: OutlineInputBorder(
         borderRadius: borderRadius,
-        borderSide: BorderSide(color: colorScheme.outline),
+        borderSide: const BorderSide(color: AppColors.border),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: borderRadius,
-        borderSide: BorderSide(color: colorScheme.primary, width: 2),
+        borderSide: const BorderSide(color: AppColors.accent, width: 1.6),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: borderRadius,
         borderSide: BorderSide(color: colorScheme.error),
       ),
-      labelStyle: textTheme.bodyMedium,
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: borderRadius,
+        borderSide: BorderSide(color: colorScheme.error, width: 1.6),
+      ),
+      labelStyle: textTheme.bodyMedium?.copyWith(color: AppColors.inkMuted),
       hintStyle: textTheme.bodyMedium?.copyWith(
-        color: colorScheme.onSurfaceVariant,
+        color: AppColors.inkSoft,
       ),
     );
   }

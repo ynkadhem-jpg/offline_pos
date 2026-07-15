@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'design_system/theme/app_theme.dart';
-import 'screens/main_shell.dart';
+import 'screens/splash_screen.dart';
 
 void main() {
   runApp(const MainApp());
@@ -13,6 +13,7 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'تقسيط',
       theme: AppTheme.light,
       locale: const Locale('ar'),
       supportedLocales: const [Locale('ar')],
@@ -21,7 +22,7 @@ class MainApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: MainShell(),
+      home: const SplashScreen(),
     );
   }
 }

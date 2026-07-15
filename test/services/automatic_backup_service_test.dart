@@ -3,10 +3,10 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:offline_pos/services/automatic_backup_service.dart';
-import 'package:offline_pos/services/automatic_backup_storage.dart';
-import 'package:offline_pos/services/database.dart';
-import 'package:offline_pos/services/local_backup_service.dart';
+import 'package:taqseet/services/automatic_backup_service.dart';
+import 'package:taqseet/services/automatic_backup_storage.dart';
+import 'package:taqseet/services/database.dart';
+import 'package:taqseet/services/local_backup_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -185,6 +185,11 @@ class FakeAutomaticBackupStorage implements AutomaticBackupStorage {
   @override
   Future<List<StoredAutomaticBackup>> listAutomaticBackups() async =>
       List.of(backups);
+
+  @override
+  Future<String> copyBackupToCache(StoredAutomaticBackup backup) async {
+    return backup.identifier;
+  }
 
   @override
   Future<void> deleteBackup(StoredAutomaticBackup backup) async {

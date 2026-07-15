@@ -37,6 +37,7 @@ class AutomaticBackupStorage(
         when (call.method) {
             "storeFile" -> storeFile(call, result)
             "listAutomaticBackups" -> runAsync(result) { listAutomaticBackups() }
+            "copyBackupToCache" -> runAsync(result) { copyBackupToCache(call) }
             "deleteBackup" -> runAsync(result) { deleteBackup(call) }
             else -> result.notImplemented()
         }
@@ -228,6 +229,52 @@ class AutomaticBackupStorage(
                 throw SecurityException("The backup is outside the dedicated folder.")
             }
             !file.exists() || file.delete()
+        }
+    }
+
+    private fun copyBackupToCache(call: MethodCall): String {
+        val identifier = call.argument<String>("identifier")
+            ?: throw IllegalArgumentException("Missing backup identifier.")
+        val fileName = call.argument<String>("fileName")
+            ?: throw IllegalArgumentException("Missing backup file name.")
+        if (!isPlainFileName(fileName)) throw IllegalArgumentException("Invalid backup file name.")
+
+        val destination = File(
+            activity.cacheDir,
+            "restore_${System.currentTimeMillis()}_$fileName",
+        )
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val uri = Uri.parse(identifier)
+                if (uri.scheme != "content" || uri.authority != MediaStore.AUTHORITY) {
+                    throw SecurityException("The backup identifier is outside MediaStore.")
+                }
+                activity.contentResolver.openInputStream(uri).use { input ->
+                    requireNotNull(input) { "Could not open the backup file." }
+                    FileOutputStream(destination).use { output ->
+                        input.copyTo(output, COPY_BUFFER_SIZE)
+                        output.flush()
+                        output.fd.sync()
+                    }
+                }
+            } else {
+                val folder = legacyFolder().canonicalFile
+                val source = File(identifier).canonicalFile
+                if (source.parentFile != folder || source.name != fileName) {
+                    throw SecurityException("The backup is outside the dedicated folder.")
+                }
+                FileInputStream(source).use { input ->
+                    FileOutputStream(destination).use { output ->
+                        input.copyTo(output, COPY_BUFFER_SIZE)
+                        output.flush()
+                        output.fd.sync()
+                    }
+                }
+            }
+            return destination.canonicalPath
+        } catch (error: Throwable) {
+            if (destination.exists()) destination.delete()
+            throw error
         }
     }
 

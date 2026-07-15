@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:offline_pos/services/database.dart';
-import 'package:offline_pos/services/local_backup_service.dart';
+import 'package:taqseet/services/database.dart';
+import 'package:taqseet/services/local_backup_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
