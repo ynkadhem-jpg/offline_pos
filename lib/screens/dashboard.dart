@@ -25,8 +25,10 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   late final Stream<ReportSummary> _summaryStream;
-  late final Stream<List<Customer>> _customersStream;
-  late final Stream<List<SalesReportRow>> _salesStream;
+  late final Stream<int> _customerCountStream;
+  late final Stream<List<SalesReportRow>> _recentSalesStream;
+  late final Stream<SalesStatusCounts> _salesStatusCountsStream;
+  late final Stream<List<MonthlySalesTotal>> _monthlySalesTotalsStream;
   late final Stream<List<TopSellingProduct>> _topProductsStream;
   late final Stream<List<DashboardInstallmentRow>> _todayInstallmentsStream;
   final NumberFormat _currency = NumberFormat.decimalPattern('en')
@@ -36,13 +38,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    final salesReportDao = SalesReportDao(widget.database);
     _summaryStream = ReportsDao(widget.database).watchSummary();
-    _customersStream = CustomerDao(widget.database).watchCustomers();
-    _salesStream = SalesReportDao(widget.database).watchActiveSales();
+    _customerCountStream = CustomerDao(
+      widget.database,
+    ).watchActiveCustomerCount();
+    _recentSalesStream = salesReportDao.watchRecentActiveSales(limit: 4);
+    _salesStatusCountsStream = salesReportDao.watchSalesStatusCounts();
+    _monthlySalesTotalsStream = salesReportDao.watchMonthlySalesTotals(
+      fromInclusive: DateTime(now.year, now.month - 5),
+    );
     _topProductsStream = ReportsDao(widget.database).watchTopSellingProducts();
     _todayInstallmentsStream = DashboardDao(
       widget.database,
-    ).watchInstallmentsDueOn(DateTime.now());
+    ).watchInstallmentsDueOn(now, limit: 4);
   }
 
   String _money(double value) => '${_currency.format(value)} د.ع';
@@ -108,8 +118,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (!summarySnapshot.hasData) return const _SectionLoading();
 
         final summary = summarySnapshot.data!;
-        return StreamBuilder<List<Customer>>(
-          stream: _customersStream,
+        return StreamBuilder<int>(
+          stream: _customerCountStream,
           builder: (context, customersSnapshot) {
             if (customersSnapshot.hasError) {
               return const _SectionError(message: 'تعذر تحميل عدد الزبائن');
@@ -141,7 +151,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               AppMetricCard(
                 icon: Icons.groups_2_outlined,
                 label: 'إجمالي الزبائن',
-                value: '${customersSnapshot.data!.length}',
+                value: '${customersSnapshot.data!}',
                 subtitle: 'زبون نشط أو سابق',
                 tone: AppStatusTone.accent,
               ),
@@ -201,38 +211,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildInsightsArea() {
-    return StreamBuilder<List<SalesReportRow>>(
-      stream: _salesStream,
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
+    return StreamBuilder<List<MonthlySalesTotal>>(
+      stream: _monthlySalesTotalsStream,
+      builder: (context, monthlySnapshot) {
+        if (monthlySnapshot.hasError) {
           return const _SectionError(message: 'تعذر تحميل مؤشرات المبيعات');
         }
-        if (!snapshot.hasData) return const _SectionLoading();
+        if (!monthlySnapshot.hasData) return const _SectionLoading();
 
-        final sales = snapshot.data!;
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final isWide = constraints.maxWidth >= 980;
-            final chart = _SalesChartCard(points: _monthlySales(sales));
-            final donut = _SalesStatusCard(sales: sales);
-
-            if (!isWide) {
-              return Column(
-                children: [
-                  chart,
-                  const SizedBox(height: AppSpacing.md),
-                  donut,
-                ],
-              );
+        return StreamBuilder<SalesStatusCounts>(
+          stream: _salesStatusCountsStream,
+          builder: (context, statusSnapshot) {
+            if (statusSnapshot.hasError) {
+              return const _SectionError(message: 'تعذر تحميل حالة المبيعات');
             }
+            if (!statusSnapshot.hasData) return const _SectionLoading();
 
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(flex: 7, child: chart),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(flex: 5, child: donut),
-              ],
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth >= 980;
+                final chart = _SalesChartCard(
+                  points: _monthlySales(monthlySnapshot.data!),
+                );
+                final donut = _SalesStatusCard(counts: statusSnapshot.data!);
+
+                if (!isWide) {
+                  return Column(
+                    children: [
+                      chart,
+                      const SizedBox(height: AppSpacing.md),
+                      donut,
+                    ],
+                  );
+                }
+
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 7, child: chart),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(flex: 5, child: donut),
+                  ],
+                );
+              },
             );
           },
         );
@@ -242,14 +263,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildLatestSales() {
     return StreamBuilder<List<SalesReportRow>>(
-      stream: _salesStream,
+      stream: _recentSalesStream,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return const _SectionError(message: 'تعذر تحميل أحدث المبيعات');
         }
         if (!snapshot.hasData) return const _SectionLoading();
 
-        final sales = snapshot.data!.take(4).toList(growable: false);
+        final sales = snapshot.data!;
         if (sales.isEmpty) {
           return const AppEmptyState(
             icon: Icons.receipt_long_outlined,
@@ -306,7 +327,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
         if (!snapshot.hasData) return const _SectionLoading();
 
-        final installments = snapshot.data!.take(4).toList(growable: false);
+        final installments = snapshot.data!;
         if (installments.isEmpty) {
           return const AppEmptyState(
             icon: Icons.event_busy_outlined,
@@ -390,7 +411,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  List<_MonthlySalesPoint> _monthlySales(List<SalesReportRow> sales) {
+  List<_MonthlySalesPoint> _monthlySales(List<MonthlySalesTotal> totals) {
     final now = DateTime.now();
     final buckets = <_MonthKey, double>{};
 
@@ -399,10 +420,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       buckets[_MonthKey(month.year, month.month)] = 0;
     }
 
-    for (final sale in sales) {
-      final key = _MonthKey(sale.startDate.year, sale.startDate.month);
+    for (final total in totals) {
+      final key = _MonthKey(total.year, total.month);
       if (buckets.containsKey(key)) {
-        buckets[key] = buckets[key]! + sale.totalAmount;
+        buckets[key] = total.totalAmount;
       }
     }
 
@@ -531,14 +552,15 @@ class _SalesChartCard extends StatelessWidget {
 }
 
 class _SalesStatusCard extends StatelessWidget {
-  const _SalesStatusCard({required this.sales});
+  const _SalesStatusCard({required this.counts});
 
-  final List<SalesReportRow> sales;
+  final SalesStatusCounts counts;
 
   @override
   Widget build(BuildContext context) {
-    final paid = sales.where((sale) => sale.isFullyPaid).length;
-    final active = sales.length - paid;
+    final paid = counts.paid;
+    final active = counts.active;
+    final total = counts.total;
 
     return AppPanel(
       child: Column(
@@ -552,7 +574,7 @@ class _SalesStatusCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
           SizedBox(
             height: 260,
-            child: sales.isEmpty
+            child: total == 0
                 ? const AppEmptyState(
                     icon: Icons.donut_large_outlined,
                     title: 'لا توجد مبيعات لعرض الحالة',
@@ -571,7 +593,7 @@ class _SalesStatusCard extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  '${sales.length}',
+                                  '$total',
                                   style: Theme.of(
                                     context,
                                   ).textTheme.headlineSmall,

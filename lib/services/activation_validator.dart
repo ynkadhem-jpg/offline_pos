@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:cryptography/cryptography.dart';
 
+import 'license_model.dart';
 import 'license_public_key.dart';
 
 enum ActivationValidationFailure {
@@ -41,7 +42,7 @@ class LicensePayload {
   final String algorithm;
   final String keyId;
   final String applicationId;
-  final String type;
+  final LicenseType type;
   final String tier;
   final String deviceFingerprint;
   final DateTime issuedAt;
@@ -146,13 +147,15 @@ class ActivationValidator {
 
       final parsedIssuedAt = DateTime.tryParse(issuedAt);
       if (parsedIssuedAt == null) return null;
+      final parsedType = LicenseType.parse(type);
+      if (parsedType == null) return null;
 
       return LicensePayload(
         version: version,
         algorithm: algorithm,
         keyId: keyId,
         applicationId: applicationId,
-        type: type,
+        type: parsedType,
         tier: tier,
         deviceFingerprint: _normalizeFingerprint(fingerprint),
         issuedAt: parsedIssuedAt.toUtc(),

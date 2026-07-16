@@ -6,14 +6,20 @@ import '../design_system/tokens/app_colors.dart';
 import '../design_system/tokens/app_radius.dart';
 import '../design_system/tokens/app_spacing.dart';
 import '../services/activation_validator.dart';
+import '../services/license_model.dart';
 import '../services/license_service.dart';
 import 'main_shell.dart';
 import 'widgets/app_ui.dart';
 
 class ActivationScreen extends StatefulWidget {
-  const ActivationScreen({required this.licenseService, super.key});
+  const ActivationScreen({
+    required this.licenseService,
+    this.requiredLicenseType,
+    super.key,
+  });
 
   final LicenseService licenseService;
+  final LicenseType? requiredLicenseType;
 
   @override
   State<ActivationScreen> createState() => _ActivationScreenState();
@@ -202,8 +208,19 @@ class _ActivationScreenState extends State<ActivationScreen> {
       return;
     }
 
+    final payload = result.payload!;
+    if (widget.requiredLicenseType != null &&
+        payload.type != widget.requiredLicenseType) {
+      setState(() {
+        _isActivating = false;
+        _errorText = 'بعد انتهاء التجربة يجب إدخال كود تفعيل دائم';
+      });
+      return;
+    }
+
     await widget.licenseService.storeActivation(
       activationCode: _normalizeActivationCode(activationCode),
+      licenseType: payload.type,
     );
 
     if (!mounted) return;

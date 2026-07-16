@@ -14,6 +14,8 @@ import 'widgets/product_form_dialog.dart';
 
 enum ProductSortOption { nameAsc, nameDesc, priceAsc, priceDesc }
 
+final NumberFormat _currencyFormatter = NumberFormat.decimalPattern('en');
+
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({
     required this.database,
@@ -478,8 +480,7 @@ class _ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final currency = NumberFormat.decimalPattern('en');
-    final price = '${currency.format(product.price)} د.ع';
+    final price = '${_currencyFormatter.format(product.price)} د.ع';
 
     return AppPanel(
       padding: const EdgeInsets.all(AppSpacing.md),

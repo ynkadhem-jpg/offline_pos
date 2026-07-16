@@ -3,9 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../design_system/tokens/app_spacing.dart';
+import '../services/license_model.dart';
 import '../services/license_service.dart';
 import 'activation_screen.dart';
+import 'clock_tampering_screen.dart';
 import 'main_shell.dart';
+import 'trial_expired_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -30,10 +33,20 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder<void>(
-        pageBuilder: (_, animation, secondaryAnimation) =>
-            licenseService.isActivated
-            ? const MainShell()
-            : ActivationScreen(licenseService: licenseService),
+        pageBuilder: (_, animation, secondaryAnimation) {
+          return switch (licenseService.status) {
+            LicenseStatus.active => const MainShell(),
+            LicenseStatus.trialExpired => TrialExpiredScreen(
+              licenseService: licenseService,
+            ),
+            LicenseStatus.clockTampered => ClockTamperingScreen(
+              licenseService: licenseService,
+            ),
+            LicenseStatus.unactivated => ActivationScreen(
+              licenseService: licenseService,
+            ),
+          };
+        },
         transitionDuration: const Duration(milliseconds: 450),
         transitionsBuilder: (_, animation, secondaryAnimation, child) =>
             FadeTransition(opacity: animation, child: child),

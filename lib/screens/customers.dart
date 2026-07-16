@@ -20,6 +20,8 @@ import 'widgets/app_ui.dart';
 
 enum CustomerPaymentFilter { all, paidThisMonth, unpaidThisMonth }
 
+final NumberFormat _currencyFormatter = NumberFormat.decimalPattern('en');
+
 class CustomersScreen extends StatefulWidget {
   const CustomersScreen({
     required this.database,
@@ -119,7 +121,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
   Future<void> _handleQuickPayment(Customer customer) async {
     try {
-      final sales = await _saleDao.watchCustomerSales(customer.id).first;
+      final sales = await _saleDao.getCustomerSales(customer.id);
       final now = DateTime.now();
       final monthStart = DateTime(now.year, now.month);
       final nextMonthStart = DateTime(now.year, now.month + 1);
@@ -171,7 +173,6 @@ class _CustomersScreenState extends State<CustomersScreen> {
   Future<Installment?> _selectCurrentInstallment(
     List<({Installment installment, String product})> installments,
   ) {
-    final currency = NumberFormat.decimalPattern('en');
     return showDialog<Installment>(
       context: context,
       builder: (context) => AlertDialog(
@@ -192,7 +193,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                     ),
                     title: entry.product,
                     subtitle:
-                        '${currency.format(entry.installment.actualDue - entry.installment.totalPaid)} د.ع متبقي',
+                        '${_currencyFormatter.format(entry.installment.actualDue - entry.installment.totalPaid)} د.ع متبقي',
                     tone: AppStatusTone.accent,
                     trailing: const Icon(Icons.chevron_left),
                   ),
@@ -551,7 +552,6 @@ class _CustomerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final currency = NumberFormat.decimalPattern('en');
     final canPay =
         summary.hasCurrentMonthInstallment && !summary.isCurrentMonthPaid;
 
@@ -602,9 +602,9 @@ class _CustomerCard extends StatelessWidget {
               );
               final financial = _CustomerAmounts(
                 totalOutstanding:
-                    '${currency.format(summary.totalOutstanding)} د.ع',
+                    '${_currencyFormatter.format(summary.totalOutstanding)} د.ع',
                 currentMonth:
-                    '${currency.format(summary.currentMonthInstallmentAmount)} د.ع',
+                    '${_currencyFormatter.format(summary.currentMonthInstallmentAmount)} د.ع',
               );
               final actions = Wrap(
                 spacing: AppSpacing.sm,

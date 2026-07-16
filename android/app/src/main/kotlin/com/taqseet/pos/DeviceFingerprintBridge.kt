@@ -1,4 +1,4 @@
-package com.example.offline_pos
+package com.taqseet.pos
 
 import android.content.Context
 import android.os.Build

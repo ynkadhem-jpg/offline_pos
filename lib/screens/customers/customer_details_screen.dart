@@ -15,7 +15,9 @@ import '../widgets/app_ui.dart';
 import 'add_product_dialog.dart';
 import 'payment_dialog.dart';
 
-class CustomerDetailsScreen extends StatelessWidget {
+final NumberFormat _currencyFormatter = NumberFormat.decimalPattern('en');
+
+class CustomerDetailsScreen extends StatefulWidget {
   const CustomerDetailsScreen({
     required this.customer,
     required this.paymentDao,
@@ -31,17 +33,32 @@ class CustomerDetailsScreen extends StatelessWidget {
   final SaleDao saleDao;
   final Future<void> Function() onDataChanged;
 
+  @override
+  State<CustomerDetailsScreen> createState() => _CustomerDetailsScreenState();
+}
+
+class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
+  late final Stream<List<CustomerSaleDetails>> _customerSalesStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _customerSalesStream = widget.saleDao.watchCustomerSales(
+      widget.customer.id,
+    );
+  }
+
   Future<void> _showAddProduct(BuildContext context) async {
     final changed = await showDialog<bool>(
       context: context,
       builder: (context) => AddProductDialog(
-        customerId: customer.id,
-        productDao: productDao,
-        saleDao: saleDao,
+        customerId: widget.customer.id,
+        productDao: widget.productDao,
+        saleDao: widget.saleDao,
       ),
     );
     if (changed == true) {
-      unawaited(onDataChanged());
+      unawaited(widget.onDataChanged());
     }
   }
 
@@ -53,8 +70,8 @@ class CustomerDetailsScreen extends StatelessWidget {
       context: context,
       builder: (context) => PaymentDialog(
         installment: installment,
-        paymentDao: paymentDao,
-        onPaymentRecorded: onDataChanged,
+        paymentDao: widget.paymentDao,
+        onPaymentRecorded: widget.onDataChanged,
       ),
     );
   }
@@ -72,7 +89,7 @@ class CustomerDetailsScreen extends StatelessWidget {
                 sliver: SliverList.list(
                   children: [
                     AppPageHeader(
-                      title: customer.name,
+                      title: widget.customer.name,
                       subtitle: 'تفاصيل الزبون، مشترياته، وجدول الأقساط.',
                       action: Wrap(
                         spacing: AppSpacing.sm,
@@ -91,81 +108,114 @@ class CustomerDetailsScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    _CustomerHero(customer: customer),
-                    const SizedBox(height: AppSpacing.lg),
-                    StreamBuilder<List<CustomerSaleDetails>>(
-                      stream: saleDao.watchCustomerSales(customer.id),
-                      builder: (context, snapshot) {
-                        if (snapshot.hasError) {
-                          return const AppPanel(
-                            child: AppEmptyState(
-                              icon: Icons.error_outline,
-                              title: 'تعذر تحميل تفاصيل الزبون',
-                              description:
-                                  'حاول الرجوع وإعادة فتح صفحة الزبون مرة أخرى.',
-                            ),
-                          );
-                        }
-                        if (!snapshot.hasData) {
-                          return const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(AppSpacing.xl),
-                              child: CircularProgressIndicator(),
-                            ),
-                          );
-                        }
-
-                        final sales = snapshot.data ?? [];
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _DetailsOverview(sales: sales),
-                            const SizedBox(height: AppSpacing.lg),
-                            AppSectionHeader(
-                              title: 'المشتريات والأقساط',
-                              subtitle:
-                                  'كل عملية بيع مع الأقساط المرتبطة بها وحالة الدفع.',
-                              icon: Icons.receipt_long_outlined,
-                              action: AppStatusChip(
-                                label: '${sales.length} عملية',
-                                tone: AppStatusTone.info,
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.md),
-                            if (sales.isEmpty)
-                              AppPanel(
-                                child: AppEmptyState(
-                                  icon: Icons.inventory_2_outlined,
-                                  title: 'لا توجد مشتريات لهذا الزبون',
-                                  description:
-                                      'أضف أول منتج لإنشاء جدول أقساط واضح.',
-                                  action: FilledButton.icon(
-                                    onPressed: () => _showAddProduct(context),
-                                    icon: const Icon(Icons.add_shopping_cart),
-                                    label: const Text('إضافة منتج'),
-                                  ),
-                                ),
-                              )
-                            else
-                              for (final details in sales) ...[
-                                _SaleDetailsCard(
-                                  details: details,
-                                  onPay: (installment) =>
-                                      _showPaymentDialog(context, installment),
-                                ),
-                                const SizedBox(height: AppSpacing.md),
-                              ],
-                          ],
-                        );
-                      },
-                    ),
+                    _CustomerHero(customer: widget.customer),
                   ],
                 ),
+              ),
+              StreamBuilder<List<CustomerSaleDetails>>(
+                stream: _customerSalesStream,
+                builder: (context, snapshot) {
+                  return SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.screenPadding,
+                      AppSpacing.lg,
+                      AppSpacing.screenPadding,
+                      AppSpacing.screenPadding,
+                    ),
+                    sliver: _buildSalesSliver(context, snapshot),
+                  );
+                },
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSalesSliver(
+    BuildContext context,
+    AsyncSnapshot<List<CustomerSaleDetails>> snapshot,
+  ) {
+    if (snapshot.hasError) {
+      return const SliverToBoxAdapter(
+        child: AppPanel(
+          child: AppEmptyState(
+            icon: Icons.error_outline,
+            title: 'تعذر تحميل تفاصيل الزبون',
+            description: 'حاول الرجوع وإعادة فتح صفحة الزبون مرة أخرى.',
+          ),
+        ),
+      );
+    }
+    if (!snapshot.hasData) {
+      return const SliverToBoxAdapter(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(AppSpacing.xl),
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      );
+    }
+
+    final sales = snapshot.data ?? const <CustomerSaleDetails>[];
+    const headerItemCount = 4;
+    final itemCount = sales.isEmpty
+        ? headerItemCount + 1
+        : headerItemCount + (sales.length * 2);
+
+    return SliverList.builder(
+      itemCount: itemCount,
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return _DetailsOverview(sales: sales);
+        }
+        if (index == 1) {
+          return const SizedBox(height: AppSpacing.lg);
+        }
+        if (index == 2) {
+          return AppSectionHeader(
+            title: 'المشتريات والأقساط',
+            subtitle: 'كل عملية بيع مع الأقساط المرتبطة بها وحالة الدفع.',
+            icon: Icons.receipt_long_outlined,
+            action: AppStatusChip(
+              label: '${sales.length} عملية',
+              tone: AppStatusTone.info,
+            ),
+          );
+        }
+        if (index == 3) {
+          return const SizedBox(height: AppSpacing.md);
+        }
+
+        if (sales.isEmpty) {
+          return AppPanel(
+            child: AppEmptyState(
+              icon: Icons.inventory_2_outlined,
+              title: 'لا توجد مشتريات لهذا الزبون',
+              description: 'أضف أول منتج لإنشاء جدول أقساط واضح.',
+              action: FilledButton.icon(
+                onPressed: () => _showAddProduct(context),
+                icon: const Icon(Icons.add_shopping_cart),
+                label: const Text('إضافة منتج'),
+              ),
+            ),
+          );
+        }
+
+        final saleItemIndex = index - headerItemCount;
+        if (saleItemIndex.isOdd) {
+          return const SizedBox(height: AppSpacing.md);
+        }
+
+        final details = sales[saleItemIndex ~/ 2];
+        return _SaleDetailsCard(
+          key: ValueKey(details.sale.id),
+          details: details,
+          onPay: (installment) => _showPaymentDialog(context, installment),
+        );
+      },
     );
   }
 }
@@ -297,7 +347,11 @@ class _DetailsOverview extends StatelessWidget {
 }
 
 class _SaleDetailsCard extends StatefulWidget {
-  const _SaleDetailsCard({required this.details, required this.onPay});
+  const _SaleDetailsCard({
+    required this.details,
+    required this.onPay,
+    super.key,
+  });
 
   final CustomerSaleDetails details;
   final ValueChanged<Installment> onPay;
@@ -416,20 +470,19 @@ class _SaleDetailsCardState extends State<_SaleDetailsCard> {
               ),
             ],
           ),
-          AnimatedCrossFade(
-            firstChild: const SizedBox.shrink(),
-            secondChild: Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.md),
-              child: _InstallmentList(
-                installments: installments,
-                onPay: widget.onPay,
-              ),
-            ),
-            crossFadeState: _expanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
+          AnimatedSize(
             duration: const Duration(milliseconds: 180),
-            sizeCurve: Curves.easeOutCubic,
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: _expanded
+                ? Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.md),
+                    child: _InstallmentList(
+                      installments: installments,
+                      onPay: widget.onPay,
+                    ),
+                  )
+                : const SizedBox.shrink(),
           ),
         ],
       ),
@@ -689,8 +742,7 @@ int _overdueDays(Installment installment) {
 }
 
 String _money(double value) {
-  final currency = NumberFormat.decimalPattern('en');
-  return '${currency.format(value)} د.ع';
+  return '${_currencyFormatter.format(value)} د.ع';
 }
 
 String _date(DateTime date) {

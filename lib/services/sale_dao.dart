@@ -287,33 +287,66 @@ class SaleDao extends DatabaseAccessor<AppDatabase> {
             OrderingTerm.asc(attachedDatabase.installments.monthNumber),
           ]);
 
-    return query.watch().map((rows) {
-      final sales = <int, Sale>{};
-      final products = <int, Product>{};
-      final installments = <int, List<Installment>>{};
+    return query.watch().map(_mapCustomerSaleRows);
+  }
 
-      for (final row in rows) {
-        final sale = row.readTable(attachedDatabase.sales);
-        sales[sale.id] = sale;
-        products[sale.id] = row.readTable(attachedDatabase.products);
+  Future<List<CustomerSaleDetails>> getCustomerSales(int customerId) async {
+    _validateId(customerId, 'customerId');
 
-        final installment = row.readTableOrNull(attachedDatabase.installments);
-        if (installment != null) {
-          (installments[sale.id] ??= []).add(installment);
-        }
-      }
-
-      return [
-        for (final entry in sales.entries)
-          CustomerSaleDetails(
-            sale: entry.value,
-            product: products[entry.key]!,
-            installments: List.unmodifiable(
-              installments[entry.key] ?? const <Installment>[],
+    final query =
+        select(attachedDatabase.sales).join([
+            innerJoin(
+              attachedDatabase.products,
+              attachedDatabase.products.id.equalsExp(
+                attachedDatabase.sales.productId,
+              ),
             ),
+            leftOuterJoin(
+              attachedDatabase.installments,
+              attachedDatabase.installments.saleId.equalsExp(
+                attachedDatabase.sales.id,
+              ),
+            ),
+          ])
+          ..where(
+            attachedDatabase.sales.customerId.equals(customerId) &
+                attachedDatabase.sales.isDeleted.equals(false),
+          )
+          ..orderBy([
+            OrderingTerm.desc(attachedDatabase.sales.startDate),
+            OrderingTerm.desc(attachedDatabase.sales.id),
+            OrderingTerm.asc(attachedDatabase.installments.monthNumber),
+          ]);
+
+    return _mapCustomerSaleRows(await query.get());
+  }
+
+  List<CustomerSaleDetails> _mapCustomerSaleRows(List<TypedResult> rows) {
+    final sales = <int, Sale>{};
+    final products = <int, Product>{};
+    final installments = <int, List<Installment>>{};
+
+    for (final row in rows) {
+      final sale = row.readTable(attachedDatabase.sales);
+      sales[sale.id] = sale;
+      products[sale.id] = row.readTable(attachedDatabase.products);
+
+      final installment = row.readTableOrNull(attachedDatabase.installments);
+      if (installment != null) {
+        (installments[sale.id] ??= []).add(installment);
+      }
+    }
+
+    return [
+      for (final entry in sales.entries)
+        CustomerSaleDetails(
+          sale: entry.value,
+          product: products[entry.key]!,
+          installments: List.unmodifiable(
+            installments[entry.key] ?? const <Installment>[],
           ),
-      ];
-    });
+        ),
+    ];
   }
 
   InstallmentsCompanion _newInstallment({

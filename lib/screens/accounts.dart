@@ -26,6 +26,9 @@ class _AccountsScreenState extends State<AccountsScreen> {
   late final Stream<List<TopSellingProduct>> _topProductsStream;
   late final Stream<List<SalesReportRow>> _salesStream;
   late final TextEditingController _searchController;
+  final NumberFormat _moneyFormatter = NumberFormat.decimalPattern('en')
+    ..minimumFractionDigits = 0
+    ..maximumFractionDigits = 0;
 
   String _searchQuery = '';
   DateTime? _fromDate;
@@ -466,10 +469,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
   }
 
   String _formatMoney(double value) {
-    final currency = NumberFormat.decimalPattern('en')
-      ..minimumFractionDigits = 0
-      ..maximumFractionDigits = 0;
-    return '${currency.format(value)} د.ع';
+    return '${_moneyFormatter.format(value)} د.ع';
   }
 
   String _formatDate(DateTime date) =>
@@ -578,14 +578,15 @@ class _TopProductRow extends StatelessWidget {
 class _SaleCard extends StatelessWidget {
   const _SaleCard({required this.sale});
 
+  static final NumberFormat _currency = NumberFormat.decimalPattern('en')
+    ..minimumFractionDigits = 0
+    ..maximumFractionDigits = 0;
+
   final SalesReportRow sale;
 
   @override
   Widget build(BuildContext context) {
-    final currency = NumberFormat.decimalPattern('en')
-      ..minimumFractionDigits = 0
-      ..maximumFractionDigits = 0;
-    String money(double value) => '${currency.format(value)} د.ع';
+    String money(double value) => '${_currency.format(value)} د.ع';
     String date(DateTime value) =>
         '${value.year}/${value.month.toString().padLeft(2, '0')}/'
         '${value.day.toString().padLeft(2, '0')}';

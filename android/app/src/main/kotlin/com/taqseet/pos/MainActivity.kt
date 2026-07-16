@@ -1,4 +1,4 @@
-package com.example.offline_pos
+package com.taqseet.pos
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine

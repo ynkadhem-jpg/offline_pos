@@ -57,6 +57,15 @@ class CustomerDao extends DatabaseAccessor<AppDatabase> {
     return query.watch();
   }
 
+  Stream<int> watchActiveCustomerCount() {
+    final countExpression = attachedDatabase.customers.id.count();
+    final query = selectOnly(attachedDatabase.customers)
+      ..addColumns([countExpression])
+      ..where(attachedDatabase.customers.isDeleted.equals(false));
+
+    return query.watchSingle().map((row) => row.read(countExpression) ?? 0);
+  }
+
   Stream<List<Customer>> watchDeletedCustomers() {
     final query = select(attachedDatabase.customers)
       ..where((customer) => customer.isDeleted.equals(true))

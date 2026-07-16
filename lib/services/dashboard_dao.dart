@@ -32,7 +32,10 @@ class DashboardDao extends DatabaseAccessor<AppDatabase> {
   DashboardDao(super.db);
 
   /// Watches unpaid installments due on a specific local calendar day.
-  Stream<List<DashboardInstallmentRow>> watchInstallmentsDueOn(DateTime day) {
+  Stream<List<DashboardInstallmentRow>> watchInstallmentsDueOn(
+    DateTime day, {
+    int? limit,
+  }) {
     final start = DateTime(day.year, day.month, day.day);
     final end = start.add(const Duration(days: 1));
 
@@ -69,6 +72,10 @@ class DashboardDao extends DatabaseAccessor<AppDatabase> {
             OrderingTerm.asc(attachedDatabase.installments.dueDate),
             OrderingTerm.asc(attachedDatabase.installments.id),
           ]);
+
+    if (limit != null) {
+      query.limit(limit);
+    }
 
     return query.watch().map(
       (rows) => rows

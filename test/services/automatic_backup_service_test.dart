@@ -49,17 +49,20 @@ void main() {
     }
   });
 
-  test('creates a strict automatic-backup name and saves UTC time', () async {
-    final result = await service.runIfDue(database);
+  test(
+    'creates a strict local-time backup name and saves UTC timestamp',
+    () async {
+      final result = await service.runIfDue(database);
 
-    expect(result.status, AutomaticBackupStatus.created);
-    expect(
-      storage.backups.single.name,
-      'offline_pos_auto_backup_2026-07-14_123000.db',
-    );
-    expect(timestampStore.value, now);
-    expect(storage.lastCopiedSize, greaterThan(0));
-  });
+      expect(result.status, AutomaticBackupStatus.created);
+      expect(
+        storage.backups.single.name,
+        'offline_pos_auto_backup_2026-07-14_153000.db',
+      );
+      expect(timestampStore.value, now);
+      expect(storage.lastCopiedSize, greaterThan(0));
+    },
+  );
 
   test('does not create another backup inside a rolling 24 hours', () async {
     expect(
@@ -102,9 +105,9 @@ void main() {
   );
 
   test(
-    'retention keeps seven strict matches and ignores unrelated files',
+    'retention keeps fifteen strict matches and ignores unrelated files',
     () async {
-      for (var day = 1; day <= 9; day++) {
+      for (var day = 1; day <= 17; day++) {
         storage.backups.add(
           StoredAutomaticBackup(
             identifier: 'owned-$day',

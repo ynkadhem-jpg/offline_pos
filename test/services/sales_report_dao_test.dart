@@ -109,5 +109,20 @@ void main() {
     expect(rows.every((row) => row.productName == 'Deleted product'), isTrue);
     expect(rows.first.isFullyPaid, isTrue);
     expect(rows.last.isFullyPaid, isFalse);
+
+    final recentRows = await dao.watchRecentActiveSales(limit: 1).first;
+    expect(recentRows, hasLength(1));
+    expect(recentRows.single.startDate.month, 7);
+
+    final statusCounts = await dao.watchSalesStatusCounts().first;
+    expect(statusCounts.paid, 1);
+    expect(statusCounts.active, 1);
+    expect(statusCounts.total, 2);
+
+    final monthlyTotals = await dao
+        .watchMonthlySalesTotals(fromInclusive: DateTime(2026, 6))
+        .first;
+    expect(monthlyTotals.map((row) => row.month), [6, 7]);
+    expect(monthlyTotals.map((row) => row.totalAmount), [100, 100]);
   });
 }
