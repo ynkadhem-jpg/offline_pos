@@ -22,14 +22,14 @@ void main() {
     },
   );
 
-  test('accepts a correctly signed trial activation code', () async {
+  test('rejects legacy trial codes without a signed expiration', () async {
     final result = await const ActivationValidator().validate(
       activationCode: trialActivationCode,
       deviceFingerprint: 'ABCD1234',
     );
 
-    expect(result.isValid, isTrue);
-    expect(result.payload?.type, LicenseType.trial);
+    expect(result.isValid, isFalse);
+    expect(result.failure, ActivationValidationFailure.malformed);
   });
 
   test(

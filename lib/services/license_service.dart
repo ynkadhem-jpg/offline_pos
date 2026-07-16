@@ -169,6 +169,8 @@ class LicenseService {
   Future<void> storeActivation({
     required String activationCode,
     required LicenseType licenseType,
+    DateTime? issuedAt,
+    DateTime? expiresAt,
   }) async {
     _ensureInitialized();
 
@@ -181,28 +183,47 @@ class LicenseService {
       );
     }
 
-    final activatedAt = (_clockValidationResult?.currentDeviceTime ?? _now())
-        .toUtc();
-    final expiresAt = licenseType == LicenseType.trial
-        ? activatedAt.add(const Duration(days: trialDurationDays))
+    final currentTime = _now().toUtc();
+    final activatedAt = licenseType == LicenseType.trial
+        ? issuedAt?.toUtc()
+        : currentTime;
+    final effectiveExpiresAt = licenseType == LicenseType.trial
+        ? expiresAt?.toUtc()
         : null;
+    if (licenseType == LicenseType.trial &&
+        (activatedAt == null ||
+            effectiveExpiresAt == null ||
+            !effectiveExpiresAt.isAfter(activatedAt))) {
+      throw ArgumentError(
+        'Trial activation requires a valid signed issue and expiration time.',
+      );
+    }
 
     await _preferences.setBool(_activatedKey, true);
     await _preferences.setString(_activationCodeKey, normalizedCode);
     await _preferences.setString(_fingerprintKey, _deviceFingerprint);
     await _preferences.setString(_licenseTypeKey, licenseType.storageValue);
-    await _preferences.setString(_activatedAtKey, _formatUtc(activatedAt));
-    if (expiresAt == null) {
+    await _preferences.setString(_activatedAtKey, _formatUtc(activatedAt!));
+    if (effectiveExpiresAt == null) {
       await _preferences.remove(_expiresAtKey);
     } else {
-      await _preferences.setString(_expiresAtKey, _formatUtc(expiresAt));
+      await _preferences.setString(
+        _expiresAtKey,
+        _formatUtc(effectiveExpiresAt),
+      );
     }
 
     _activationCode = normalizedCode;
     _licenseType = licenseType;
     _activatedAt = activatedAt;
-    _expiresAt = expiresAt;
-    _status = LicenseStatus.active;
+    _expiresAt = effectiveExpiresAt;
+    _status = _resolveStatus(
+      licenseType,
+      activatedAt: activatedAt,
+      expiresAt: effectiveExpiresAt,
+      clockResult: _clockValidationResult!,
+      evaluationTime: currentTime,
+    );
   }
 
   Future<void> clearActivation() async {
@@ -227,9 +248,11 @@ class LicenseService {
     required DateTime? activatedAt,
     required DateTime? expiresAt,
     required ClockValidationResult clockResult,
+    DateTime? evaluationTime,
   }) {
     if (type == LicenseType.trial) {
-      final currentDeviceTime = clockResult.currentDeviceTime;
+      final currentDeviceTime =
+          evaluationTime?.toUtc() ?? clockResult.currentDeviceTime;
       final isBeforeActivation = ClockValidationService.isBeforeActivationTime(
         currentDeviceTime,
         activatedAt,

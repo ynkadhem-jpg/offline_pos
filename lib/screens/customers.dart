@@ -49,6 +49,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
   String _searchQuery = '';
   CustomerPaymentFilter _paymentFilter = CustomerPaymentFilter.all;
+  final Set<int> _deletingCustomerIds = <int>{};
 
   @override
   void initState() {
@@ -102,6 +103,85 @@ class _CustomersScreenState extends State<CustomersScreen> {
     );
     if (changed == true) {
       unawaited(widget.onDataChanged());
+    }
+  }
+
+  Future<void> _showEditCustomerForm(Customer customer) async {
+    final changed = await showDialog<bool>(
+      context: context,
+      builder: (context) =>
+          CustomerFormDialog(customerDao: _customerDao, customer: customer),
+    );
+    if (changed == true) {
+      unawaited(widget.onDataChanged());
+    }
+  }
+
+  Future<void> _deleteCustomer(Customer customer) async {
+    if (_deletingCustomerIds.contains(customer.id)) return;
+
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: AppColors.errorSoft,
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+              ),
+              child: const Icon(
+                Icons.person_remove_outlined,
+                color: AppColors.error,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.rg),
+            const Expanded(child: Text('حذف الزبون؟')),
+          ],
+        ),
+        content: Text(
+          'سيتم إخفاء "${customer.name}" من قائمة الزبائن، مع الاحتفاظ بالمبيعات والأقساط السابقة.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+    if (shouldDelete != true || !mounted) return;
+
+    setState(() => _deletingCustomerIds.add(customer.id));
+    try {
+      final affectedRows = await _customerDao.softDeleteCustomer(customer.id);
+      if (affectedRows != 1) {
+        throw StateError('Customer was not soft-deleted.');
+      }
+      unawaited(widget.onDataChanged());
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تعذر حذف الزبون. يرجى المحاولة مرة أخرى'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _deletingCustomerIds.remove(customer.id));
+      }
     }
   }
 
@@ -260,129 +340,139 @@ class _CustomersScreenState extends State<CustomersScreen> {
     return Scaffold(
       body: Directionality(
         textDirection: ui.TextDirection.rtl,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.screenPadding),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              AppPageHeader(
-                title: 'الزبائن',
-                subtitle:
-                    'إدارة العلاقات، متابعة الاستحقاقات، وتسجيل الدفعات بثقة.',
-                action: FilledButton.icon(
-                  onPressed: _showAddCustomerForm,
-                  icon: const Icon(Icons.person_add_alt_1),
-                  label: const Text('إضافة زبون'),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.screenPadding),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AppPageHeader(
+                  title: 'الزبائن',
+                  subtitle:
+                      'إدارة العلاقات، متابعة الاستحقاقات، وتسجيل الدفعات بثقة.',
+                  action: FilledButton.icon(
+                    onPressed: _showAddCustomerForm,
+                    icon: const Icon(Icons.person_add_alt_1),
+                    label: const Text('إضافة زبون'),
+                  ),
                 ),
-              ),
-              Expanded(
-                child: StreamBuilder<List<Customer>>(
-                  stream: _customersStream,
-                  builder: (context, customersSnapshot) {
-                    if (customersSnapshot.hasError) {
-                      return const _CustomersMessage(
-                        icon: Icons.error_outline,
-                        title: 'حدث خطأ أثناء تحميل الزبائن',
-                        description: 'حاول إعادة فتح الشاشة أو التطبيق.',
-                      );
-                    }
-                    if (!customersSnapshot.hasData) {
-                      return const _CustomersMessage.loading();
-                    }
-
-                    final allCustomers = customersSnapshot.data ?? [];
-                    final customers = _filterCustomers(allCustomers);
-                    return StreamBuilder<List<CustomerSummary>>(
-                      stream: _customerSummariesStream,
-                      builder: (context, summariesSnapshot) {
-                        if (summariesSnapshot.hasError) {
-                          return const _CustomersMessage(
-                            icon: Icons.error_outline,
-                            title: 'حدث خطأ أثناء تحميل ملخصات الزبائن',
-                            description:
-                                'البيانات الأساسية سليمة، لكن الملخص تعذر تحميله.',
-                          );
-                        }
-                        if (!summariesSnapshot.hasData) {
-                          return const _CustomersMessage.loading();
-                        }
-
-                        final summaries = <int, CustomerSummary>{
-                          for (final summary in summariesSnapshot.data ?? [])
-                            summary.customerId: summary,
-                        };
-                        final visibleCustomers = customers.where((customer) {
-                          return _matchesPaymentFilter(
-                            _summaryFor(customer, summaries),
-                          );
-                        }).toList();
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _CustomerOverview(
-                              totalCustomers: allCustomers.length,
-                              visibleCustomers: visibleCustomers.length,
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
-                            _CustomerControls(
-                              searchController: _searchController,
-                              paymentFilter: _paymentFilter,
-                              onSearchChanged: _onSearchChanged,
-                              onPaymentFilterChanged: _onPaymentFilterChanged,
-                            ),
-                            const SizedBox(height: AppSpacing.md),
-                            Expanded(
-                              child: visibleCustomers.isEmpty
-                                  ? _CustomersMessage(
-                                      icon: Icons.people_outline,
-                                      title: _emptyMessage(
-                                        hasActiveCustomers:
-                                            allCustomers.isNotEmpty,
-                                      ),
-                                      description:
-                                          'يمكنك تعديل البحث أو تغيير الفلتر لعرض نتائج أخرى.',
-                                      action: allCustomers.isEmpty
-                                          ? FilledButton.icon(
-                                              onPressed: _showAddCustomerForm,
-                                              icon: const Icon(
-                                                Icons.person_add_alt_1,
-                                              ),
-                                              label: const Text(
-                                                'إضافة أول زبون',
-                                              ),
-                                            )
-                                          : null,
-                                    )
-                                  : ListView.separated(
-                                      padding: EdgeInsets.zero,
-                                      itemCount: visibleCustomers.length,
-                                      separatorBuilder: (context, index) =>
-                                          const SizedBox(height: AppSpacing.md),
-                                      itemBuilder: (context, index) {
-                                        final customer =
-                                            visibleCustomers[index];
-                                        return _CustomerCard(
-                                          customer: customer,
-                                          summary: _summaryFor(
-                                            customer,
-                                            summaries,
-                                          ),
-                                          onQuickPayment: _handleQuickPayment,
-                                          onTap: () =>
-                                              _showCustomerDetails(customer),
-                                        );
-                                      },
-                                    ),
-                            ),
-                          ],
+                Expanded(
+                  child: StreamBuilder<List<Customer>>(
+                    stream: _customersStream,
+                    builder: (context, customersSnapshot) {
+                      if (customersSnapshot.hasError) {
+                        return const _CustomersMessage(
+                          icon: Icons.error_outline,
+                          title: 'حدث خطأ أثناء تحميل الزبائن',
+                          description: 'حاول إعادة فتح الشاشة أو التطبيق.',
                         );
-                      },
-                    );
-                  },
+                      }
+                      if (!customersSnapshot.hasData) {
+                        return const _CustomersMessage.loading();
+                      }
+
+                      final allCustomers = customersSnapshot.data ?? [];
+                      final customers = _filterCustomers(allCustomers);
+                      return StreamBuilder<List<CustomerSummary>>(
+                        stream: _customerSummariesStream,
+                        builder: (context, summariesSnapshot) {
+                          if (summariesSnapshot.hasError) {
+                            return const _CustomersMessage(
+                              icon: Icons.error_outline,
+                              title: 'حدث خطأ أثناء تحميل ملخصات الزبائن',
+                              description:
+                                  'البيانات الأساسية سليمة، لكن الملخص تعذر تحميله.',
+                            );
+                          }
+                          if (!summariesSnapshot.hasData) {
+                            return const _CustomersMessage.loading();
+                          }
+
+                          final summaries = <int, CustomerSummary>{
+                            for (final summary in summariesSnapshot.data ?? [])
+                              summary.customerId: summary,
+                          };
+                          final visibleCustomers = customers.where((customer) {
+                            return _matchesPaymentFilter(
+                              _summaryFor(customer, summaries),
+                            );
+                          }).toList();
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _CustomerOverview(
+                                totalCustomers: allCustomers.length,
+                                visibleCustomers: visibleCustomers.length,
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              _CustomerControls(
+                                searchController: _searchController,
+                                paymentFilter: _paymentFilter,
+                                onSearchChanged: _onSearchChanged,
+                                onPaymentFilterChanged: _onPaymentFilterChanged,
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              Expanded(
+                                child: visibleCustomers.isEmpty
+                                    ? _CustomersMessage(
+                                        icon: Icons.people_outline,
+                                        title: _emptyMessage(
+                                          hasActiveCustomers:
+                                              allCustomers.isNotEmpty,
+                                        ),
+                                        description:
+                                            'يمكنك تعديل البحث أو تغيير الفلتر لعرض نتائج أخرى.',
+                                        action: allCustomers.isEmpty
+                                            ? FilledButton.icon(
+                                                onPressed: _showAddCustomerForm,
+                                                icon: const Icon(
+                                                  Icons.person_add_alt_1,
+                                                ),
+                                                label: const Text(
+                                                  'إضافة أول زبون',
+                                                ),
+                                              )
+                                            : null,
+                                      )
+                                    : ListView.separated(
+                                        padding: EdgeInsets.zero,
+                                        itemCount: visibleCustomers.length,
+                                        separatorBuilder: (context, index) =>
+                                            const SizedBox(
+                                              height: AppSpacing.md,
+                                            ),
+                                        itemBuilder: (context, index) {
+                                          final customer =
+                                              visibleCustomers[index];
+                                          return _CustomerCard(
+                                            customer: customer,
+                                            summary: _summaryFor(
+                                              customer,
+                                              summaries,
+                                            ),
+                                            onQuickPayment: _handleQuickPayment,
+                                            onEdit: () =>
+                                                _showEditCustomerForm(customer),
+                                            onDelete: () =>
+                                                _deleteCustomer(customer),
+                                            isDeleting: _deletingCustomerIds
+                                                .contains(customer.id),
+                                            onTap: () =>
+                                                _showCustomerDetails(customer),
+                                          );
+                                        },
+                                      ),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -541,12 +631,18 @@ class _CustomerCard extends StatelessWidget {
     required this.customer,
     required this.summary,
     required this.onQuickPayment,
+    required this.onEdit,
+    required this.onDelete,
+    required this.isDeleting,
     required this.onTap,
   });
 
   final Customer customer;
   final CustomerSummary summary;
   final ValueChanged<Customer> onQuickPayment;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final bool isDeleting;
   final VoidCallback onTap;
 
   @override
@@ -620,6 +716,31 @@ class _CustomerCard extends StatelessWidget {
                     onPressed: onTap,
                     icon: const Icon(Icons.open_in_new_outlined),
                     label: const Text('التفاصيل'),
+                  ),
+                  IconButton.filledTonal(
+                    onPressed: isDeleting ? null : onEdit,
+                    tooltip: 'تعديل بيانات الزبون',
+                    icon: const Icon(Icons.edit_outlined),
+                  ),
+                  SizedBox(
+                    width: AppSpacing.minTouchTarget,
+                    height: AppSpacing.minTouchTarget,
+                    child: isDeleting
+                        ? const Padding(
+                            padding: EdgeInsets.all(AppSpacing.rg),
+                            child: CircularProgressIndicator(
+                              strokeWidth: AppSpacing.xs,
+                            ),
+                          )
+                        : IconButton.filledTonal(
+                            onPressed: onDelete,
+                            tooltip: 'حذف الزبون',
+                            color: AppColors.error,
+                            style: IconButton.styleFrom(
+                              backgroundColor: AppColors.errorSoft,
+                            ),
+                            icon: const Icon(Icons.delete_outline),
+                          ),
                   ),
                 ],
               );

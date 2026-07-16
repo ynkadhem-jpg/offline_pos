@@ -30,6 +30,8 @@ abstract final class AppColors {
   static const Color errorSoft = Color(0xFFFEE2E2);
   static const Color info = Color(0xFF2563EB);
   static const Color infoSoft = Color(0xFFEFF6FF);
+  static const Color whatsapp = Color(0xFF25D366);
+  static const Color whatsappSoft = Color(0xFFE7F8EE);
 
   static const Color chartBlue = Color(0xFF3B82F6);
   static const Color chartTeal = Color(0xFF14B8A6);

@@ -9,6 +9,7 @@ import '../services/automatic_backup_service.dart';
 import '../services/automatic_backup_storage.dart';
 import '../services/database.dart';
 import '../services/local_backup_service.dart';
+import 'about_screen.dart';
 import 'accounts.dart';
 import 'customers.dart';
 import 'dashboard.dart';
@@ -57,6 +58,11 @@ class _MainShellState extends State<MainShell> {
       icon: Icons.backup_outlined,
       selectedIcon: Icons.backup,
     ),
+    _ShellDestination(
+      label: 'عن التطبيق',
+      icon: Icons.info_outline_rounded,
+      selectedIcon: Icons.info_rounded,
+    ),
   ];
 
   @override
@@ -92,12 +98,13 @@ class _MainShellState extends State<MainShell> {
         key: ValueKey('accounts_$_databaseGeneration'),
         database: _database,
       ),
-      _ => SettingsScreen(
+      4 => SettingsScreen(
         key: ValueKey('settings_$_databaseGeneration'),
         database: _database,
         backupService: _backupService,
         onDatabaseChanged: _replaceDatabase,
       ),
+      _ => const AboutScreen(key: ValueKey('about')),
     };
   }
 
@@ -292,6 +299,13 @@ class _ShellRail extends StatelessWidget {
                         selected: selectedIndex == 4,
                         extended: extended,
                         onTap: () => onSelected(4),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      _RailItem(
+                        destination: _MainShellState._destinations[5],
+                        selected: selectedIndex == 5,
+                        extended: extended,
+                        onTap: () => onSelected(5),
                       ),
                     ],
                   ),

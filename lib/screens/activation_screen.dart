@@ -221,7 +221,18 @@ class _ActivationScreenState extends State<ActivationScreen> {
     await widget.licenseService.storeActivation(
       activationCode: _normalizeActivationCode(activationCode),
       licenseType: payload.type,
+      issuedAt: payload.issuedAt,
+      expiresAt: payload.expiresAt,
     );
+
+    if (!widget.licenseService.isActivated) {
+      if (!mounted) return;
+      setState(() {
+        _isActivating = false;
+        _errorText = 'انتهت صلاحية كود التجربة';
+      });
+      return;
+    }
 
     if (!mounted) return;
 

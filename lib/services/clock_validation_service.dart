@@ -25,7 +25,7 @@ class ClockValidationService {
   }) : _preferences = preferences ?? SharedPreferencesAsync(),
        _now = now ?? (() => DateTime.now().toUtc());
 
-  static const rollbackTolerance = Duration(minutes: 5);
+  static const rollbackTolerance = Duration(minutes: 30);
 
   static const _lastTrustedTimeKey = 'licensing.clock.lastTrustedTime';
   static const _lastRunTimeKey = 'licensing.clock.lastRunTime';

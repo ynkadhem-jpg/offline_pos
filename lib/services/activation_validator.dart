@@ -36,6 +36,7 @@ class LicensePayload {
     required this.tier,
     required this.deviceFingerprint,
     required this.issuedAt,
+    required this.expiresAt,
   });
 
   final int version;
@@ -46,6 +47,7 @@ class LicensePayload {
   final String tier;
   final String deviceFingerprint;
   final DateTime issuedAt;
+  final DateTime? expiresAt;
 }
 
 class ActivationValidator {
@@ -133,6 +135,7 @@ class ActivationValidator {
       final tier = payloadJson['tier'];
       final fingerprint = payloadJson['fp'];
       final issuedAt = payloadJson['iat'];
+      final expiresAt = payloadJson['exp'];
 
       if (version is! int ||
           algorithm is! String ||
@@ -145,10 +148,18 @@ class ActivationValidator {
         return null;
       }
 
-      final parsedIssuedAt = DateTime.tryParse(issuedAt);
+      final parsedIssuedAt = DateTime.tryParse(issuedAt)?.toUtc();
       if (parsedIssuedAt == null) return null;
       final parsedType = LicenseType.parse(type);
       if (parsedType == null) return null;
+      final parsedExpiresAt = expiresAt is String
+          ? DateTime.tryParse(expiresAt)?.toUtc()
+          : null;
+      if (parsedType == LicenseType.trial &&
+          (parsedExpiresAt == null ||
+              !parsedExpiresAt.isAfter(parsedIssuedAt))) {
+        return null;
+      }
 
       return LicensePayload(
         version: version,
@@ -158,7 +169,8 @@ class ActivationValidator {
         type: parsedType,
         tier: tier,
         deviceFingerprint: _normalizeFingerprint(fingerprint),
-        issuedAt: parsedIssuedAt.toUtc(),
+        issuedAt: parsedIssuedAt,
+        expiresAt: parsedExpiresAt,
       );
     } on FormatException {
       return null;
