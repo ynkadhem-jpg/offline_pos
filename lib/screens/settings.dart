@@ -144,7 +144,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
 
       artifact = result.artifact!;
-      final destination = await FilePicker.platform.saveFile(
+      final destination = await FilePicker.saveFile(
         dialogTitle: 'حفظ النسخة الاحتياطية',
         fileName: artifact.fileName,
         type: FileType.custom,
@@ -175,14 +175,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _isBusy = true);
 
     try {
-      final selection = await FilePicker.platform.pickFiles(
+      final selectedFile = await FilePicker.pickFile(
         dialogTitle: 'اختيار نسخة احتياطية',
         type: FileType.custom,
         allowedExtensions: const ['db'],
-        allowMultiple: false,
-        withData: false,
       );
-      final sourcePath = selection?.files.single.path;
+      final sourcePath = selectedFile?.path;
       if (sourcePath == null) return;
 
       final validation = await widget.backupService.validateBackup(sourcePath);
